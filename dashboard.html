@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  const url='https://jpeanlmbfylihxsvuamm.supabase.co';
+  const key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+  const sb=window.supabase.createClient(url,key);
+  sb.auth.getSession().then(({data:{session}})=>{
+    if(!session) window.location.href='index.html';
+  });
+  window._sbClient=sb;
+})();
+</script>
+
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Full-Arch Authority</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1a1a'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='18' font-family='system-ui' fill='white'>FA</text></svg>"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg-primary:#ffffff;
+    --bg-secondary:#f5f5f4;
+    --bg-tertiary:#eeede9;
+    --accent:#0b1d5e;
+    --accent2:#bc9762;
+    --text-primary:#1a1a1a;
+    --text-secondary:#555553;
+    --text-tertiary:#888786;
+    --border-light:rgba(0,0,0,0.12);
+    --border-mid:rgba(0,0,0,0.22);
+    --border-strong:rgba(0,0,0,0.35);
+    --radius-md:8px;
+    --radius-lg:12px;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg-primary:#1c1c1e;
+      --bg-secondary:#2c2c2e;
+      --bg-tertiary:#3a3a3c;
+      --accent:#0b1d5e;
+      --accent2:#bc9762;
+      --text-primary:#f2f2f7;
+      --text-secondary:#aeaeb2;
+      --text-tertiary:#636366;
+      --border-light:rgba(255,255,255,0.1);
+      --border-mid:rgba(255,255,255,0.18);
+      --border-strong:rgba(255,255,255,0.28);
+    }
+  }
+  body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;}
+  .app{max-width:1100px;margin:0 auto;padding:1.5rem 1rem;}
+  .page-title{font-size:18px;font-weight:700;color:#bc9762;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:14px 1rem;letter-spacing:.01em;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;}
+  .page-title span{font-size:12px;font-weight:400;color:rgba(255,255,255,0.45);}
+
+  /* top bar */
+  .top-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;}
+  .top-bar input{height:36px;padding:0 12px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;min-width:160px;font-family:var(--font);}
+  .top-bar input:focus{outline:none;border-color:var(--border-strong);}
+  .btn-primary{height:36px;padding:0 16px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);font-weight:500;}
+  .btn-primary:hover{opacity:.82;}
+  .btn-ghost{height:36px;padding:0 14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);}
+  .btn-ghost:hover{background:var(--bg-secondary);}
+
+  /* tabs */
+  .view-tabs{display:flex;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;width:fit-content;margin-bottom:1.25rem;}
+  .vtab{padding:8px 18px;font-size:13px;cursor:pointer;background:transparent;border:none;color:var(--text-secondary);border-right:0.5px solid var(--border-light);font-family:var(--font);}
+  .vtab:last-child{border-right:none;}
+  .vtab.active{background:var(--accent);color:#fff;border-bottom:2px solid var(--accent2);}
+
+  /* pills */
+  .pill-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem;}
+  .pill{padding:5px 14px;border:0.5px solid var(--border-mid);border-radius:999px;background:var(--bg-primary);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);}
+  .pill:hover{background:var(--bg-secondary);}
+  .pill.active{background:var(--accent);color:#fff;border-color:var(--accent2);}
+
+  /* grid & cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;}
+  .card{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:1rem 1.1rem;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .card:hover{border-color:var(--border-strong);box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+  .card-head{display:flex;align-items:center;gap:10px;}
+  .avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;}
+  .client-name{font-size:14px;font-weight:500;color:var(--text-primary);flex:1;}
+  .icon-btn{background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:3px 5px;border-radius:4px;font-size:14px;line-height:1;font-family:var(--font);}
+  .icon-btn:hover{color:var(--text-secondary);background:var(--bg-secondary);}
+
+  /* link chips */
+  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;}
+  .chip-label{flex:1;color:var(--text-primary);}
+  .chip-cat{font-size:11px;color:var(--text-tertiary);}
+  .add-row{display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;width:100%;font-family:var(--font);}
+  .add-row:hover{color:var(--text-secondary);}
+
+  /* category view */
+  .cat-section{background:var(--bg-primary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:10px;}
+  .cat-head{padding:10px 14px;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);display:flex;align-items:center;gap:8px;}
+  .cat-title{font-size:13px;font-weight:500;color:var(--text-primary);flex:1;}
+  .cat-count{font-size:11px;color:var(--text-tertiary);}
+  .crow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:0.5px solid var(--border-light);}
+  .crow:last-child{border-bottom:none;}
+  .crow-name{font-size:13px;color:var(--text-primary);flex:1;}
+  .crow-url{font-size:11px;color:var(--text-tertiary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .open-btn{font-size:12px;padding:4px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;font-family:var(--font);white-space:nowrap;}
+  .open-btn:hover{background:var(--bg-secondary);}
+
+  /* queue */
+  .queue-notice{background:var(--bg-secondary);border:0.5px solid var(--border-light);border-radius:var(--radius-lg);padding:.9rem 1.1rem;font-size:13px;color:var(--text-secondary);margin-bottom:1rem;line-height:1.6;}
+  .q-section-label{font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
+  .q-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);margin-bottom:6px;}
+  .q-num{width:20px;height:20px;border-radius:50%;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-tertiary);}
+  .q-info{flex:1;}
+  .q-client{font-size:13px;font-weight:500;color:var(--text-primary);}
+  .q-cat{font-size:11px;color:var(--text-tertiary);}
+
+  /* detail view */
+  .back-btn{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;background:none;border:none;margin-bottom:1.25rem;font-family:var(--font);padding:0;}
+  .back-btn:hover{color:var(--text-primary);}
+  .detail-header{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;flex-wrap:wrap;}
+  .detail-name{font-size:20px;font-weight:600;color:var(--text-primary);}
+  .detail-sub{font-size:13px;color:var(--text-tertiary);margin-top:3px;}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;}
+  @media(max-width:500px){.detail-grid{grid-template-columns:1fr;}}
+  .detail-card{background:var(--bg-secondary);border-radius:var(--radius-md);padding:.9rem 1rem;}
+  .detail-card-title{font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .detail-card-val{font-size:13px;color:var(--text-primary);line-height:1.6;}
+  .detail-section-title{font-size:14px;font-weight:500;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--accent2);padding-bottom:6px;}
+  .links-table{display:flex;flex-direction:column;gap:6px;}
+  .lt-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);flex-wrap:wrap;}
+  .lt-label{font-size:13px;color:var(--text-primary);flex:1;min-width:80px;}
+  .lt-cat{font-size:11px;color:var(--text-tertiary);background:var(--bg-secondary);border-radius:4px;padding:2px 7px;}
+  .lt-url{font-size:11px;color:var(--text-tertiary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
+  .modal{background:var(--bg-primary);border-radius:var(--radius-lg);border:0.5px solid var(--border-mid);padding:1.5rem;width:100%;max-width:780px;display:flex;flex-direction:column;gap:13px;max-height:90vh;overflow-y:auto;}
+  .modal h3{font-size:16px;font-weight:600;color:var(--text-primary);}
+  .fgroup{display:flex;flex-direction:column;gap:5px;}
+  .flabel{font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;}
+  .modal input,.modal select,.modal textarea{padding:8px 11px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;width:100%;font-family:var(--font);}
+  .modal textarea{resize:vertical;min-height:72px;line-height:1.5;}
+  .modal input:focus,.modal select:focus,.modal textarea:focus{outline:none;border-color:var(--border-strong);}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+  .m-cancel{height:34px;padding:0 14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);}
+  .m-save{height:34px;padding:0 16px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);font-weight:500;}
+  .m-danger{height:34px;padding:0 14px;border:0.5px solid rgba(163,45,45,0.3);border-radius:var(--radius-md);background:transparent;color:#A32D2D;font-size:13px;cursor:pointer;margin-right:auto;font-family:var(--font);}
+  .empty{text-align:center;padding:3rem;color:var(--text-tertiary);font-size:13px;}
+  .muted{color:var(--text-tertiary);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const COLORS=[
+  {bg:'#E6F1FB',txt:'#0C447C'},{bg:'#E1F5EE',txt:'#085041'},{bg:'#FAECE7',txt:'#712B13'},
+  {bg:'#FBEAF0',txt:'#72243E'},{bg:'#FAEEDA',txt:'#633806'},{bg:'#EAF3DE',txt:'#274F0A'},
+  {bg:'#EEEDFE',txt:'#3C3489'},{bg:'#FCEBEB',txt:'#791F1F'},{bg:'#F1EFE8',txt:'#444441'}
+];
+
+const DEFAULTS={
+  clients:[
+    {id:1,name:'4M Dental Implant Center',ci:0,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:2,name:'Aesthetic Oral Arts',ci:1,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:3,name:'Capital Dental',ci:2,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:4,name:'Dynamic Services Dental Group',ci:3,practices:['Odessa Family Dental','St. Joseph Advanced Dental Center'],info:{doctor:'',staff:'',timezone:'',locations:'Odessa Family Dental, St. Joseph Advanced Dental Center',numLocations:'2',notes:'Two practices under this client.'}},
+    {id:5,name:'Jeffrey S. Burns',ci:4,info:{doctor:'Jeffrey S. Burns',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:6,name:'New Smile Now',ci:5,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:7,name:'SWOSA',ci:6,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:8,name:'Texas Sedation Dentistry',ci:7,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+    {id:9,name:'Wolf Dental Wellness',ci:8,info:{doctor:'',staff:'',timezone:'',locations:'',numLocations:'',notes:''}},
+  ],
+  links:[
+    {id:1,clientId:1,label:'Success Map',category:'Success Map',url:''},
+    {id:2,clientId:1,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:3,clientId:2,label:'Success Map',category:'Success Map',url:''},
+    {id:4,clientId:2,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:5,clientId:3,label:'Success Map',category:'Success Map',url:''},
+    {id:6,clientId:3,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:7,clientId:4,label:'Success Map',category:'Success Map',url:''},
+    {id:8,clientId:4,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:9,clientId:5,label:'Success Map',category:'Success Map',url:''},
+    {id:10,clientId:5,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:11,clientId:6,label:'Success Map',category:'Success Map',url:''},
+    {id:12,clientId:6,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:13,clientId:7,label:'Success Map',category:'Success Map',url:''},
+    {id:14,clientId:7,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:15,clientId:8,label:'Success Map',category:'Success Map',url:''},
+    {id:16,clientId:8,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+    {id:17,clientId:9,label:'Success Map',category:'Success Map',url:''},
+    {id:18,clientId:9,label:'Metrics Scorecard',category:'Metrics Scorecard',url:''},
+  ],
+  nCid:10,
+  nLid:19
+};
+
+const DEFAULT_FIELDS=[
+  {key:'doctor',label:'Doctor / primary contact',type:'text',placeholder:'Dr. Jane Smith'},
+  {key:'staff',label:'Staff / team contacts',type:'text',placeholder:'Office manager, coordinator...'},
+  {key:'timezone',label:'Time zone',type:'timezone',placeholder:''},
+  {key:'numLocations',label:'No. of locations',type:'text',placeholder:'e.g. 1'},
+  {key:'locations',label:'Practice location names',type:'textarea',placeholder:'e.g. Main Office, North Branch'},
+  {key:'notes',label:'Notes',type:'textarea',placeholder:'Any other info...'},
+];
+
+function migrateData(){
+  if(!S||!S.clients)return;
+  const JUNK=/^#[0-9A-Fa-f]{3,8}$|^(Blue|Amber|Green|Pink|Purple|Sage|Coral|Red|Gray)$/i;
+  S.clients.forEach(c=>{
+    if(c.id===4&&(!c.practices||!c.practices.length)){
+      c.practices=['Odessa Family Dental','St. Joseph Advanced Dental Center'];
+    }
+    if(Array.isArray(c.practices)){
+      c.practices=c.practices.filter(p=>p&&typeof p==='string'&&!JUNK.test(p.trim()));
+      if(c.practices.length===0) c.practices=null;
+    }
+  });
+}
+
+const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+const SB_HEADERS={'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+const STATE_ID='gmj_main';
+let _syncTimer=null;
+
+let S=JSON.parse(localStorage.getItem('gmj_dashboard')||'null')||JSON.parse(JSON.stringify(DEFAULTS));
+migrateData();
+save();
+let view='clients',filter='all',detailId=null,editMode=false,clientMode=false,clientModeId=null,accountingMode=false;
+const activePractice={};
+
+function save(){
+  localStorage.setItem('gmj_dashboard',JSON.stringify(S));
+  setSyncStatus('saving');
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(pushToSupabase,900);
+}
+
+function setSyncStatus(s){
+  const el=document.getElementById('sync-dot');
+  if(!el)return;
+  el.title=s==='saving'?'Saving…':s==='saved'?'Saved':s==='error'?'Sync error':'';
+  el.style.background=s==='saved'?'#4ade80':s==='error'?'#A32D2D':s==='saving'?'#f59e0b':'var(--border-mid)';
+}
+
+async function pushToSupabase(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
+      method:'POST',
+      headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({id:STATE_ID,data:S,updated_at:new Date().toISOString()})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    setSyncStatus('saved');
+    setTimeout(()=>setSyncStatus('idle'),3000);
+  }catch(e){
+    setSyncStatus('error');
+    console.warn('Supabase sync error:',e);
+  }
+}
+
+async function loadFromSupabase(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/app_state?id=eq.${STATE_ID}&select=data`,{headers:SB_HEADERS});
+    const rows=await res.json();
+    if(rows&&rows.length&&rows[0].data){
+      S=rows[0].data;
+      migrateData();
+      localStorage.setItem('gmj_dashboard',JSON.stringify(S));
+      setSyncStatus('saved');
+      setTimeout(()=>setSyncStatus('idle'),2000);
+      render();
+    }
+  }catch(e){
+    setSyncStatus('error');
+    console.warn('Could not load from Supabase:',e);
+  }
+}
+function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function cats(){return[...new Set(S.links.map(l=>l.category))].sort();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function val(id){return(document.getElementById(id)||{}).value||'';}
+
+function confirmEnableEditMode(){
+  showModal(`
+    <h3>Enable link editing?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will show edit and delete controls on all spreadsheet links. Make sure you only make changes you intend to.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="editMode=true;closeModal();render()">Enable editing</button>
+    </div>`);
+}
+
+function enterClientMode(id){clientMode=true;clientModeId=id;filter=id;view='clients';editMode=false;closeModal();render();}
+
+function tryExitClientMode(){
+  showModal(`
+    <h3 style="text-align:center;margin-bottom:4px;">End Client Mode?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);text-align:center;line-height:1.5;margin-bottom:4px;">You'll return to the full dashboard.</p>
+    <div class="modal-actions" style="justify-content:center;gap:12px;margin-top:8px;">
+      <button class="m-cancel" style="min-width:80px;" onclick="closeModal()">Cancel</button>
+      <button class="m-save" style="min-width:80px;" onclick="clientMode=false;clientModeId=null;filter='all';closeModal();render()">Exit</button>
+    </div>`);
+}
+
+function openClientModeSelector(){
+  const opts=S.clients.map(c=>{
+    const col=COLORS[c.ci%COLORS.length];
+    return`<button onclick="enterClientMode(${c.id})" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;cursor:pointer;font-family:var(--font);margin-bottom:6px;text-align:left;">
+      <div style="width:30px;height:30px;border-radius:50%;background:${col.bg};color:${col.txt};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">${ini(c.name)}</div>
+      <span style="font-weight:500;">${esc(c.name)}</span>
+    </button>`;
+  }).join('');
+  showModal(`
+    <h3>Select a client</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">Dashboard will show only that client's info.</p>
+    <div>${opts}</div>
+    <div class="modal-actions"><button class="m-cancel" onclick="closeModal()">Cancel</button></div>`);
+}
+
+function render(){
+  const app=document.getElementById('app');
+  if(detailId!==null){renderDetail(app);return;}
+
+  if(clientMode){
+    const c=S.clients.find(x=>x.id===clientModeId);
+    const col=c?COLORS[c.ci%COLORS.length]:{bg:'#eee',txt:'#333'};
+    let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;">
+      ${c?`<div style="width:32px;height:32px;border-radius:50%;background:${col.bg};color:${col.txt};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">${ini(c.name)}</div>
+      <span style="font-size:16px;font-weight:600;color:var(--text-primary);">${esc(c.name)}</span>`:''}
+      <button class="btn-ghost" onclick="tryExitClientMode()" style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-tertiary);border-color:var(--border-light);">
+        <span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;flex-shrink:0;"></span>
+        Client Mode
+      </button>
+    </div>`;
+    html+='<div id="main"></div>';
+    app.innerHTML=html;
+    renderClients();
+    return;
+  }
+
+  let html=`<div class="page-title">Full-Arch Authority <span>Client Dashboard</span> <span id="sync-dot" title="" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--border-mid);margin-left:8px;vertical-align:middle;transition:background .3s;cursor:default;"></span></div>
+  <div class="top-bar">
+    <input id="nc-inp" placeholder="New client name" onkeydown="if(event.key==='Enter')addClient()"/>
+    <button class="btn-primary" onclick="addClient()">Add client</button>
+    <button class="btn-ghost" onclick="openLinkModal(null,null)">+ Add file</button>
+    <button class="btn-ghost" style="${editMode?'border-color:#bc9762;color:#bc9762;border-width:1px;':''}" onclick="${editMode?'editMode=false;render()':'confirmEnableEditMode()'}">
+      ${editMode?'<span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:5px;"></span>':'<span style="display:inline-block;transform:scaleX(-1);">✎</span>&nbsp;'}${editMode?'Editing on':'Edit files'}
+    </button>
+    <button class="btn-ghost" onclick="openClientModeSelector()" style="margin-left:auto;">Client Mode</button>
+    <div style="position:relative;display:inline-block;">
+      <button class="btn-ghost" onclick="toggleSettingsMenu()" id="settings-btn">⚙ Settings</button>
+      <div id="settings-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:var(--radius-lg);min-width:180px;z-index:100;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+        <button onclick="exportBackup();closeSettingsMenu();" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:none;background:transparent;color:var(--text-primary);font-size:13px;cursor:pointer;font-family:var(--font);text-align:left;">
+          <span style="font-size:14px;">⬆</span> Export backup
+        </button>
+        <div style="height:0.5px;background:var(--border-light);"></div>
+        <button onclick="document.getElementById('import-file').click();closeSettingsMenu();" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:none;background:transparent;color:var(--text-primary);font-size:13px;cursor:pointer;font-family:var(--font);text-align:left;">
+          <span style="font-size:14px;">⬇</span> Import backup
+        </button>
+        <div style="height:0.5px;background:var(--border-light);"></div>
+        <button onclick="debugRecoverData();closeSettingsMenu();" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:none;background:transparent;color:#A32D2D;font-size:13px;cursor:pointer;font-family:var(--font);text-align:left;">
+          <span style="font-size:14px;">⚠</span> Recover data
+        </button>
+      </div>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackup(this)"/>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;padding:8px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border-light);">
+    <span style="font-size:11px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-right:4px;">Accounting</span>
+    ${accountingMode?`<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;display:inline-block;"></span>Active</span><button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;" onclick="accountingMode=false;render()">Exit</button><button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;margin-left:auto;" onclick="openAccountingOverview()">Overview</button>`:`<button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;" onclick="confirmEnableAccounting()">Enable</button><span style="font-size:12px;color:var(--text-tertiary);">Enable to view and record client payments</span>`}
+  </div>
+  <div class="view-tabs">
+    <button class="vtab${view==='clients'?' active':''}" onclick="switchView('clients')">By client</button>
+    <button class="vtab${view==='category'?' active':''}" onclick="switchView('category')">By category</button>
+    <button class="vtab${view==='queue'?' active':''}" onclick="switchView('queue')">Work queue</button>
+  </div>`;
+
+  if(view!=='queue'){
+    const items=view==='clients'
+      ?S.clients.map(c=>({id:c.id,label:c.name,isNum:true}))
+      :cats().map(c=>({id:c,label:c,isNum:false}));
+    html+=`<div class="pill-bar"><button class="pill${filter==='all'?' active':''}" onclick="setFilter('all')">All</button>`;
+    items.forEach(it=>{
+      const active=String(filter)===String(it.id);
+      const onclick=it.isNum?`setFilter(${it.id})`:`setFilter(decodeURIComponent('${encodeURIComponent(it.id)}'))`;
+      html+=`<button class="pill${active?' active':''}" onclick="${onclick}">${esc(it.label)}</button>`;
+    });
+    html+='</div>';
+  }
+
+  html+='<div id="main"></div>';
+  app.innerHTML=html;
+
+  if(view==='clients') renderClients();
+  else if(view==='category') renderCategory();
+  else renderQueue();
+}
+
+function renderClients(){
+  const visibleRaw=filter==='all'?S.clients:S.clients.filter(c=>String(c.id)===String(filter));
+  const visible=[...visibleRaw].sort((a,b)=>{
+    const aMulti=Array.isArray(a.practices)&&a.practices.length>1?1:0;
+    const bMulti=Array.isArray(b.practices)&&b.practices.length>1?1:0;
+    return aMulti-bMulti;
+  });
+  if(!visible.length){document.getElementById('main').innerHTML='<div class="empty">No clients yet. Add one above.</div>';return;}
+  let html='<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));">';
+  visible.forEach(c=>{
+    const col=COLORS[c.ci%COLORS.length];
+    const links=S.links.filter(l=>l.clientId===c.id);
+    const practices=getPractices(c);
+    const hasMultiple=practices.length>1;
+    const curPractice=activePractice[c.id]||null;
+    const tabItems=[{label:'All',val:null},...practices.map(p=>({label:p,val:p}))];
+    const rows=[];
+    for(let i=0;i<tabItems.length;i+=3) rows.push(tabItems.slice(i,i+3));
+    const tabBar=hasMultiple?`<div style="display:flex;flex-direction:column;gap:0;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;margin-bottom:8px;width:100%;" onclick="event.stopPropagation()">
+      ${rows.map((row,ri)=>`<div style="display:flex;border-bottom:${ri<rows.length-1?'0.5px solid var(--border-light)':'none'};">
+        ${row.map((t,ti)=>{
+          const isAll=t.val===null;
+          const isActive=t.val===curPractice;
+          return`<button onclick="event.stopPropagation();activePractice[${c.id}]=${t.val===null?'null':`'${esc(t.val)}'`};render()" style="${isAll?'flex:0 0 36px;':'flex:1;'}padding:5px 6px;font-size:11px;border:none;cursor:pointer;font-family:var(--font);background:${isAll?'var(--bg-tertiary)':'transparent'};color:${isActive?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${isActive?'500':'400'};border-right:${ti<row.length-1?'0.5px solid var(--border-light)':'none'};border-bottom:${isActive?'2px solid var(--text-primary)':'2px solid transparent'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.label)}</button>`;
+        }).join('')}
+      </div>`).join('')}
+    </div>`:'';
+
+    const visibleLinks=links.filter(l=>{
+      if(!hasMultiple) return true;
+      if(!curPractice) return true;
+      return !l.practice||l.practice===curPractice;
+    });
+    const PRACTICE_PALETTE=[
+      {bg:'#E6F1FB',txt:'#0C447C'},
+      {bg:'#FAEEDA',txt:'#633806'},
+      {bg:'#E1F5EE',txt:'#085041'},
+      {bg:'#FBEAF0',txt:'#72243E'},
+      {bg:'#EEEDFE',txt:'#3C3489'},
+      {bg:'#EAF3DE',txt:'#274F0A'},
+      {bg:'#FAECE7',txt:'#712B13'},
+      {bg:'#FCEBEB',txt:'#791F1F'},
+    ];
+    const storedColors=c.practiceColors||{};
+    const practiceColorMap={};
+    practices.forEach((p,i)=>{
+      practiceColorMap[p]=storedColors[p]||PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
+    });
+
+    let chips=visibleLinks.slice(0,4).map(l=>`
+      <div class="link-chip" onclick="event.stopPropagation();if(event.target.closest('.icon-btn'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;" title="${l.url?esc(l.url):'No URL yet — click to add'}">
+        <svg style="width:13px;height:13px;flex-shrink:0;opacity:${l.url?'0.5':'0.25'};" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
+        <span class="chip-label" style="color:${l.url?'var(--text-primary)':'var(--text-tertiary)'};">${esc(l.label)}</span>
+        ${hasMultiple&&l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:10px;color:${pc.txt};background:${pc.bg};border-radius:3px;padding:1px 6px;flex-shrink:0;white-space:nowrap;font-weight:500;">${esc(l.practice)}</span>`;})():''}
+        ${!l.url?'<span style="font-size:10px;color:var(--text-tertiary);font-style:italic;">no url</span>':''}
+        ${editMode&&!clientMode?`<button class="icon-btn" onclick="event.stopPropagation();openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);">✎</button>
+        <button class="icon-btn" onclick="event.stopPropagation();deleteLink(${l.id})" title="Delete">×</button>`:''}
+      </div>`).join('');
+    if(visibleLinks.length>4) chips+=`<div style="font-size:11px;color:var(--text-tertiary);padding:2px 4px;">+${visibleLinks.length-4} more — click card to view all</div>`;
+    const inf=c.info||{};
+    const metaParts=[inf.doctor,inf.timezone?inf.timezone.split('—')[0].trim():''].filter(Boolean);
+    const metaLine=metaParts.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-top:1px;line-height:1.4;">${esc(metaParts.join(' · '))}</div>`:'';
+    const payments=Array.isArray(c.payments)?c.payments:[];
+    const lastPay=payments.length?payments[payments.length-1]:null;
+    const billing=c.billing||{};
+    const monthlyAmt=billing.monthlyAmount?`$${Number(billing.monthlyAmount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'';
+    const billingDay=billing.billingDay?parseInt(billing.billingDay):null;
+
+    let pastDueHtml='';
+    if(billingDay){
+      const today=new Date();
+      const thisMonthDue=new Date(today.getFullYear(),today.getMonth(),billingDay);
+      const lastPayDate=lastPay?new Date(lastPay.date+'T12:00:00'):null;
+      const isPaid=lastPayDate&&lastPayDate>=thisMonthDue;
+      if(!isPaid&&today>thisMonthDue){
+        const daysLate=Math.floor((today-thisMonthDue)/(1000*60*60*24));
+        pastDueHtml=`<div style="font-size:11px;font-weight:500;color:#A32D2D;margin-top:3px;">⚠ ${daysLate} day${daysLate!==1?'s':''} past due</div>`;
+      } else if(!isPaid){
+        const daysUntil=Math.floor((thisMonthDue-today)/(1000*60*60*24));
+        pastDueHtml=`<div style="font-size:11px;color:var(--text-tertiary);margin-top:3px;">Due in ${daysUntil} day${daysUntil!==1?'s':''}</div>`;
+      } else {
+        pastDueHtml=`<div style="font-size:11px;color:#3B6D11;margin-top:3px;">✓ Paid this cycle</div>`;
+      }
+    }
+
+    const paymentRow=accountingMode?`
+      <div style="display:flex;flex-direction:column;gap:0;padding:8px 9px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border-light);margin-top:4px;" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div style="flex:1;">
+            <div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;">Last payment${monthlyAmt?` · <span style="color:var(--text-secondary);">${monthlyAmt}/mo</span>`:''}</div>
+            <div style="font-size:12px;font-weight:500;color:var(--text-primary);margin-top:2px;">${lastPay?`$${Number(lastPay.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} — ${esc(lastPay.fmt||lastPay.date)}`:'<span style="color:var(--text-tertiary);font-style:italic;font-weight:400;">No payments yet</span>'}</div>
+            ${billingDay?`<div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Bills on the ${billingDay}${billingDay===1?'st':billingDay===2?'nd':billingDay===3?'rd':'th'} of each month</div>`:''}
+            ${pastDueHtml}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <div style="display:flex;gap:5px;">
+              <button onclick="event.stopPropagation();openPaymentHistory(${c.id})" style="height:26px;padding:0 9px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap;">Payments</button>
+              <button onclick="event.stopPropagation();openMarkPaid(${c.id})" style="height:26px;padding:0 9px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap;">Mark paid</button>
+            </div>
+            <button onclick="event.stopPropagation();openBillingSettings(${c.id})" style="height:22px;padding:0 9px;border:none;background:none;color:var(--text-tertiary);font-size:10px;cursor:pointer;font-family:var(--font);text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--border-light);">Billing settings</button>
+          </div>
+        </div>
+      </div>`:'';
+    html+=`<div class="card" onclick="openDetail(${c.id})" style="${hasMultiple?'grid-column:1/-1;':''}">
+      <div class="card-head">
+        <div class="avatar" style="width:34px;height:34px;font-size:12px;background:${col.bg};color:${col.txt};">${ini(c.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="client-name">${esc(c.name)}</div>
+          ${metaLine}
+        </div>
+        ${clientMode?'':` <button class="icon-btn" onclick="event.stopPropagation();openClientModal(${c.id})" title="Edit" style="transform:scaleX(-1);">✎</button>`}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        ${tabBar}
+        ${chips||'<div style="font-size:12px;color:var(--text-tertiary);font-style:italic;padding:2px 0;">No files yet</div>'}
+        ${editMode&&!clientMode?`<button class="add-row" onclick="event.stopPropagation();openLinkModal(null,${c.id})"><span style="font-size:15px;line-height:1;">+</span>&nbsp;Add link</button>`:''}
+        ${paymentRow}
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  document.getElementById('main').innerHTML=html;
+}
+
+function renderCategory(){
+  const allCats=cats();
+  const visible=filter==='all'?allCats:allCats.filter(c=>String(c)===String(filter));
+  if(!visible.length){document.getElementById('main').innerHTML='<div class="empty">No categories yet. Add links first.</div>';return;}
+  let html='';
+  visible.forEach(cat=>{
+    const catLinks=S.links.filter(l=>l.category===cat);
+    let rows='';
+    catLinks.forEach(l=>{
+      const client=S.clients.find(c=>c.id===l.clientId);
+      if(!client)return;
+      const col=COLORS[client.ci%COLORS.length];
+      rows+=`<div class="crow">
+        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${col.bg};color:${col.txt};">${ini(client.name)}</div>
+        <span class="crow-name">${esc(client.name)}</span>
+        <span class="crow-url" title="${esc(l.url)}">${esc(l.url)}</span>
+        <button class="icon-btn" onclick="openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);${clientMode?'display:none;':''}">✎</button>
+        <button class="open-btn" onclick="window.open('${esc(l.url)}','_blank')">Open →</button>
+      </div>`;
+    });
+    html+=`<div class="cat-section">
+      <div class="cat-head"><span class="cat-title">${esc(cat)}</span><span class="cat-count">${catLinks.length} client${catLinks.length!==1?'s':''}</span></div>
+      <div>${rows||'<div class="crow" style="color:var(--text-tertiary);font-size:13px;">No clients</div>'}</div>
+    </div>`;
+  });
+  document.getElementById('main').innerHTML=html;
+}
+
+function renderQueue(){
+  const allCats=cats();
+  let html=`<div class="queue-notice"><strong>How to use:</strong> Click <strong>Open →</strong> to launch the sheet in a new tab. Work on it, close the tab, and click the next client to keep moving down the list.</div>`;
+  if(!allCats.length){html+='<div class="empty">No files yet. Add some first.</div>';}
+  allCats.forEach(cat=>{
+    html+=`<div style="margin-bottom:1.5rem;"><div class="q-section-label">${esc(cat)}</div>`;
+    S.links.filter(l=>l.category===cat).forEach((l,i)=>{
+      const client=S.clients.find(c=>c.id===l.clientId);
+      if(!client)return;
+      const col=COLORS[client.ci%COLORS.length];
+      html+=`<div class="q-item">
+        <div class="q-num">${i+1}</div>
+        <div class="avatar" style="width:28px;height:28px;font-size:11px;background:${col.bg};color:${col.txt};">${ini(client.name)}</div>
+        <div class="q-info"><div class="q-client">${esc(client.name)}</div><div class="q-cat">${esc(cat)}</div></div>
+        <button class="open-btn" onclick="window.open('${esc(l.url)}','_blank')">Open →</button>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('main').innerHTML=html;
+}
+
+function renderDetail(app){
+  const c=S.clients.find(x=>x.id===detailId);
+  if(!c){detailId=null;render();return;}
+  const col=COLORS[c.ci%COLORS.length];
+  const inf=c.info||{};
+  const links=S.links.filter(l=>l.clientId===c.id);
+  const practices=getPractices(c);
+  const hasMultiplePractices=practices.length>1;
+  const detailActivePractice=window._detailPractice&&window._detailPractice.clientId===c.id?window._detailPractice.val:null;
+
+  const visibleLinks=links.filter(l=>{
+    if(!hasMultiplePractices||!detailActivePractice) return true;
+    return !l.practice||l.practice===detailActivePractice;
+  });
+
+  const practiceTabBar=hasMultiplePractices?`
+    <div style="display:flex;gap:0;flex-wrap:wrap;margin-bottom:10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;width:fit-content;">
+      <button onclick="window._detailPractice={clientId:${c.id},val:null};renderDetail(document.getElementById('app'))" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:var(--font);background:${!detailActivePractice?'var(--bg-tertiary)':'transparent'};color:${!detailActivePractice?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${!detailActivePractice?'500':'400'};border-right:0.5px solid var(--border-light);border-bottom:${!detailActivePractice?'2px solid var(--text-primary)':'2px solid transparent'};">All</button>
+      ${practices.map((p,i)=>`<button onclick="window._detailPractice={clientId:${c.id},val:'${esc(p)}'};renderDetail(document.getElementById('app'))" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:var(--font);background:transparent;color:${detailActivePractice===p?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${detailActivePractice===p?'500':'400'};${i<practices.length-1?'border-right:0.5px solid var(--border-light);':''}border-bottom:${detailActivePractice===p?'2px solid var(--text-primary)':'2px solid transparent'};">${esc(p)}</button>`).join('')}
+    </div>`:'';
+
+  const linksHtml=visibleLinks.map(l=>`
+    <div class="lt-row">
+      <span class="lt-label">${esc(l.label)}</span>
+      <span class="lt-cat">${esc(l.category)}</span>
+      ${l.practice?`<span style="font-size:11px;color:var(--text-tertiary);background:var(--bg-secondary);border-radius:4px;padding:1px 6px;">${esc(l.practice)}</span>`:''}
+      <span class="lt-url" title="${esc(l.url)}">${esc(l.url)}</span>
+      <button class="open-btn" onclick="window.open('${esc(l.url)}','_blank')">Open</button>
+      ${clientMode?'':`<button class="icon-btn" onclick="openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);">✎</button>
+      <button class="icon-btn" onclick="deleteLink(${l.id})" title="Delete">×</button>`}
+    </div>`).join('')||'<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;padding:.5rem 0;">No files yet.</div>';
+
+  const CLIENT_MODE_FIELDS=['doctor','timezone','numLocations','locations'];
+  const fields=clientMode
+    ?(S.fields||DEFAULT_FIELDS).filter(f=>CLIENT_MODE_FIELDS.includes(f.key))
+    :S.fields||DEFAULT_FIELDS;
+  const fieldCards=fields.map(f=>{
+    const v=inf[f.key];
+    const span=(f.type==='textarea'||f.key==='notes'||f.key==='locations')?'grid-column:1/-1;':'';
+    if(f.key==='staff'){
+      let staffArr=[];
+      try{staffArr=JSON.parse(v||'[]');}catch(e){if(v)staffArr=[{name:v,title:'',phone:''}];}
+      const staffHtml=staffArr.length?`
+        <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;background:var(--bg-tertiary);border-bottom:0.5px solid var(--border-light);padding:5px 10px;gap:0;">
+            ${['Name','Title / Role','Phone','Email'].map(h=>`<div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;">${h}</div>`).join('')}
+          </div>
+          ${staffArr.map((m,i)=>`
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;padding:7px 10px;gap:0;border-bottom:${i<staffArr.length-1?'0.5px solid var(--border-light)':'none'};background:var(--bg-primary);">
+            <div style="font-size:12px;font-weight:500;padding-right:8px;"><button onclick="openStaffProfile(${c.id},${i})" style="background:none;border:none;font-size:12px;font-weight:500;color:var(--text-primary);cursor:pointer;font-family:var(--font);padding:0;text-align:left;text-decoration:underline;text-decoration-color:var(--border-mid);text-underline-offset:2px;">${esc(m.name)||'—'}</button></div>
+            <div style="font-size:12px;color:var(--text-secondary);padding-right:8px;">${esc(m.title)||'—'}</div>
+            <div style="font-size:12px;color:var(--text-tertiary);padding-right:8px;">${esc(m.phone)||'—'}</div>
+            <div style="font-size:12px;color:var(--text-tertiary);">${esc(m.email)||'—'}</div>
+          </div>`).join('')}
+        </div>`:'<span class="muted">—</span>';
+      return`<div class="detail-card" style="grid-column:1/-1;"><div class="detail-card-title">${esc(f.label)}</div><div class="detail-card-val">${staffHtml}</div></div>`;
+    }
+    return`<div class="detail-card" style="${span}"><div class="detail-card-title">${esc(f.label)}</div><div class="detail-card-val">${v?esc(v):'<span class="muted">—</span>'}</div></div>`;
+  }).join('');
+
+  if(clientMode){
+    // Slim down fieldCards for client mode — inline key info, no grid cards
+    const doctor=inf.doctor||'';
+    const timezone=inf.timezone?inf.timezone.split('—')[0].trim():'';
+    const numLocations=inf.numLocations||'';
+    const locations=inf.locations||'';
+
+    const infoRow=[
+      doctor?`<div style="display:flex;flex-direction:column;gap:2px;"><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;">Doctor</div><div style="font-size:14px;font-weight:500;color:var(--text-primary);">${esc(doctor)}</div></div>`:'',
+      timezone?`<div style="display:flex;flex-direction:column;gap:2px;"><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;">Time zone</div><div style="font-size:14px;color:var(--text-primary);">${esc(timezone)}</div></div>`:'',
+      numLocations?`<div style="display:flex;flex-direction:column;gap:2px;"><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;">Locations</div><div style="font-size:14px;color:var(--text-primary);">${esc(numLocations)}</div></div>`:'',
+    ].filter(Boolean).join('');
+
+    app.innerHTML=`
+      <button class="back-btn" onclick="detailId=null;render()">← Back</button>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--border-light);">
+        <div class="avatar" style="width:56px;height:56px;font-size:20px;font-weight:600;background:${col.bg};color:${col.txt};flex-shrink:0;">${ini(c.name)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:22px;font-weight:600;color:var(--text-primary);line-height:1.2;">${esc(c.name)}</div>
+          ${hasMultiplePractices?`<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">${practices.join(' · ')}</div>`:''}
+        </div>
+      </div>
+      ${infoRow?`<div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:1.5rem;padding:1rem 1.25rem;background:var(--bg-secondary);border-radius:var(--radius-lg);border:0.5px solid var(--border-light);">${infoRow}</div>`:''}
+      ${locations?`<div style="margin-bottom:1.5rem;padding:1rem 1.25rem;background:var(--bg-secondary);border-radius:var(--radius-lg);border:0.5px solid var(--border-light);"><div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Practice locations</div><div style="font-size:13px;color:var(--text-primary);line-height:1.8;white-space:pre-wrap;">${esc(locations)}</div></div>`:''}
+      <div style="font-size:14px;font-weight:500;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;gap:8px;">Files <span style="font-size:12px;font-weight:400;color:var(--text-tertiary);">${visibleLinks.length} file${visibleLinks.length!==1?'s':''}</span></div>
+      ${practiceTabBar}
+      <div class="links-table">${linksHtml}</div>`;
+    return;
+  }
+  const nlocF=fields.find(f=>f.key==='numLocations');
+  const tzF=fields.find(f=>f.key==='timezone');
+  const subParts=[];
+  if(nlocF&&inf.numLocations) subParts.push(inf.numLocations+' location'+(inf.numLocations!='1'?'s':''));
+  if(tzF&&inf.timezone) subParts.push(inf.timezone);
+
+  app.innerHTML=`
+    <button class="back-btn" onclick="detailId=null;render()">← Back to all clients</button>
+    <div class="detail-header">
+      <div class="avatar" style="width:52px;height:52px;font-size:18px;font-weight:600;background:${col.bg};color:${col.txt};">${ini(c.name)}</div>
+      <div style="flex:1;">
+        <div class="detail-name">${esc(c.name)}</div>
+        <div class="detail-sub">${subParts.join(' · ')||'No profile info yet'}</div>
+      </div>
+      ${clientMode?'':` <button class="btn-ghost" onclick="openClientModal(${c.id})">Edit profile</button>
+      <button class="btn-ghost" style="color:#A32D2D;border-color:rgba(163,45,45,0.3);" onclick="confirmDeleteClient(${c.id})">Delete client</button>`}
+    </div>
+    <div class="detail-grid">${fieldCards}</div>
+    <div class="detail-section-title">
+      Files
+      ${clientMode?'':` <button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;" onclick="openLinkModal(null,${c.id})">+ Add file</button>`}
+    </div>
+    ${practiceTabBar}
+    <div class="links-table">${linksHtml}</div>`;
+}
+
+function showModal(inner){
+  let overlay=document.getElementById('modal-overlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='modal-overlay';overlay.className='modal-overlay';document.body.appendChild(overlay);}
+  overlay.innerHTML=`<div class="modal" onclick="event.stopPropagation()" style="position:relative;">
+    <button onclick="closeModal()" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;color:var(--text-tertiary);cursor:pointer;line-height:1;padding:0;font-family:var(--font);">×</button>
+    ${inner}</div>`;
+  overlay.onclick=closeModal;
+}
+function closeModal(){const o=document.getElementById('modal-overlay');if(o)o.remove();}
+
+function showConfirm(inner){
+  let overlay=document.getElementById('confirm-overlay');
+  if(!overlay){overlay=document.createElement('div');overlay.id='confirm-overlay';overlay.className='modal-overlay';overlay.style.zIndex='1001';document.body.appendChild(overlay);}
+  overlay.innerHTML=`<div class="modal" onclick="event.stopPropagation()">${inner}</div>`;
+  overlay.onclick=closeConfirm;
+}
+function closeConfirm(){const o=document.getElementById('confirm-overlay');if(o)o.remove();}
+
+function getStaffArr(c){
+  let staffArr=[];
+  try{staffArr=JSON.parse(c.info.staff||'[]');}catch(e){if(c.info&&c.info.staff)staffArr=[{name:c.info.staff,title:'',phone:'',email:'',notesLog:[]}];}
+  return staffArr;
+}
+
+function fmtDate(){
+  const now=new Date();
+  return now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' at '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+function openStaffProfile(clientId,staffIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  const m=staffArr[staffIdx];
+  if(!m)return;
+  const col=COLORS[c.ci%COLORS.length];
+  const log=Array.isArray(m.notesLog)?m.notesLog:[];
+  const showHistory=!(S.adminSettings&&S.adminSettings.hideEditHistory);
+
+  const logHtml=log.length?[...log].map((entry,i)=>({entry,origIdx:i})).reverse().map(({entry,origIdx})=>{
+    const showThisHistory=showHistory&&entry.edited&&!entry.hideHistory;
+    const displayDate=showThisHistory&&entry.editedAt
+      ?`${esc(entry.originalDate||entry.date)} · edited ${esc(entry.editedAt)}`
+      :esc(entry.originalDate||entry.date);
+    return`
+    <div style="padding:10px 12px;border-bottom:0.5px solid var(--border-light);background:var(--bg-primary);" id="note-row-${origIdx}">
+      <div id="note-actions-${origIdx}" style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;flex:1;">
+          ${displayDate}${showThisHistory?` <span style="font-style:italic;color:var(--text-tertiary);">(edited)</span>`:''}
+        </span>
+        ${showThisHistory&&Array.isArray(entry.history)&&entry.history.length?`<button onclick="viewNoteHistory(${origIdx})" style="font-size:10px;padding:1px 6px;border:none;border-radius:3px;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font);text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--border-mid);">see changes</button>`:''}
+        <button onclick="startEditNote(${clientId},${staffIdx},${origIdx})" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);">Edit</button>
+        <button onclick="inlineDeleteNote(${clientId},${staffIdx},${origIdx})" style="font-size:11px;padding:2px 8px;border:0.5px solid rgba(163,45,45,0.3);border-radius:4px;background:transparent;color:#A32D2D;cursor:pointer;font-family:var(--font);">Delete</button>
+      </div>
+      <div id="note-text-${origIdx}" style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${esc(entry.text)}</div>
+      <div id="note-history-${origIdx}" style="display:none;margin-top:8px;border-top:0.5px solid var(--border-light);padding-top:8px;">
+        ${Array.isArray(entry.history)?entry.history.map((h,hi)=>`
+          <div style="margin-bottom:6px;">
+            <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:2px;">Version ${hi+1} — ${esc(h.date)}</div>
+            <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;white-space:pre-wrap;padding:6px 8px;background:var(--bg-secondary);border-radius:4px;">${esc(h.text)}</div>
+          </div>`).join(''):''}
+      </div>
+      <div id="note-edit-${origIdx}" style="display:none;">
+        <textarea id="note-edit-ta-${origIdx}" style="width:100%;padding:6px 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-family:var(--font);font-size:13px;resize:vertical;min-height:60px;line-height:1.6;margin-top:4px;">${esc(entry.text)}</textarea>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:5px;">
+          <button onclick="cancelEditNote(${origIdx})" style="font-size:11px;padding:3px 10px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);">Cancel</button>
+          <button onclick="confirmSaveNote(${clientId},${staffIdx},${origIdx})" style="font-size:11px;padding:3px 10px;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-family:var(--font);">Save edit</button>
+        </div>
+      </div>
+    </div>`;}).join('')
+    :`<div style="font-size:12px;color:var(--text-tertiary);font-style:italic;padding:10px;">No notes yet.</div>`;
+
+  showModal(`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div style="width:44px;height:44px;border-radius:50%;background:${col.bg};color:${col.txt};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0;">${ini(m.name||'?')}</div>
+      <div style="flex:1;">
+        <div style="font-size:16px;font-weight:500;color:var(--text-primary);">${esc(m.name||'—')}</div>
+        <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">${esc(c.name)}</div>
+      </div>
+      <button onclick="promptAdminSettings(${clientId},${staffIdx})" style="background:none;border:none;font-size:11px;color:var(--text-tertiary);cursor:pointer;font-family:var(--font);padding:2px 4px;" title="Admin settings">⚙</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="detail-card"><div class="detail-card-title">Title / Role</div>
+        <input id="sp-title" value="${esc(m.title||'')}" placeholder="—" style="width:100%;background:transparent;border:none;font-size:13px;color:var(--text-primary);font-family:var(--font);padding:0;margin-top:2px;"/>
+      </div>
+      <div class="detail-card"><div class="detail-card-title">Phone</div>
+        <input id="sp-phone" value="${esc(m.phone||'')}" placeholder="—" style="width:100%;background:transparent;border:none;font-size:13px;color:var(--text-primary);font-family:var(--font);padding:0;margin-top:2px;"/>
+      </div>
+      <div class="detail-card" style="grid-column:1/-1;"><div class="detail-card-title">Email</div>
+        <input id="sp-email" value="${esc(m.email||'')}" placeholder="—" style="width:100%;background:transparent;border:none;font-size:13px;color:var(--text-primary);font-family:var(--font);padding:0;margin-top:2px;"/>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div class="detail-card-title" style="margin-bottom:6px;">Add note</div>
+      <textarea id="sp-newnote" placeholder="Write a new note..." style="width:100%;padding:8px 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-family:var(--font);font-size:13px;resize:vertical;min-height:70px;line-height:1.6;"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+        <button onclick="confirmAddNote(${clientId},${staffIdx})" style="height:30px;padding:0 14px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);">Add note</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="detail-card-title" style="margin-bottom:6px;">Notes log</div>
+      <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;max-height:260px;overflow-y:auto;">
+        ${logHtml}
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+      <button class="m-save" onclick="confirmSaveStaffProfile(${clientId},${staffIdx})">Save changes</button>
+    </div>`);
+}
+
+function viewNoteHistory(noteIdx){
+  const histDiv=document.getElementById('note-history-'+noteIdx);
+  const textDiv=document.getElementById('note-text-'+noteIdx);
+  if(!histDiv)return;
+  const isOpen=histDiv.style.display!=='none';
+  histDiv.style.display=isOpen?'none':'block';
+  if(textDiv) textDiv.style.display=isOpen?'block':'none';
+}
+
+function promptAdminSettings(clientId,staffIdx){
+  showModal(`
+    <h3>Admin settings</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">Enter the admin password to access note history settings.</p>
+    <div class="fgroup" style="margin-top:10px;">
+      <div class="flabel">Password</div>
+      <input id="admin-pw" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkAdminPassword(${clientId},${staffIdx})"/>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="m-cancel" onclick="openStaffProfile(${clientId},${staffIdx})">Cancel</button>
+      <button class="m-save" onclick="checkAdminPassword(${clientId},${staffIdx})">Continue</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('admin-pw');if(el)el.focus();},50);
+}
+
+function checkAdminPassword(clientId,staffIdx){
+  const pw=document.getElementById('admin-pw');
+  if(!pw)return;
+  if(pw.value.toLowerCase().replace(/\s/g,'')!=='harrypotter'){
+    pw.style.border='0.5px solid #A32D2D';
+    pw.value='';
+    pw.placeholder='Incorrect — try again';
+    pw.focus();
+    return;
+  }
+  openAdminSettings(clientId,staffIdx);
+}
+
+function openAdminSettings(clientId,staffIdx){
+  if(!S.adminSettings) S.adminSettings={hideEditHistory:false};
+  const hidden=S.adminSettings.hideEditHistory;
+  showModal(`
+    <h3>Admin settings</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:14px;">These settings apply across all contact profiles.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);margin-bottom:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary);">Show edit history globally</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">Shows "(edited)" label and "see changes" on all updated notes</div>
+      </div>
+      <button onclick="toggleAdminSetting('hideEditHistory',${clientId},${staffIdx})" style="flex-shrink:0;width:44px;height:24px;border-radius:999px;border:none;cursor:pointer;font-size:11px;font-family:var(--font);background:${hidden?'var(--bg-tertiary)':'var(--text-primary)'};color:${hidden?'var(--text-tertiary)':'var(--bg-primary)'};">
+        ${hidden?'Off':'On'}
+      </button>
+    </div>
+    <div style="padding:12px 14px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:3px;">Hide history on specific notes</div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:10px;">Select individual edited notes to remove the "(edited)" label and "see changes" from</div>
+      <button onclick="openNoteHistoryManager(${clientId},${staffIdx})" style="height:30px;padding:0 14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);">Manage notes →</button>
+    </div>
+    <div style="padding:12px 14px;border:0.5px solid rgba(163,45,45,0.2);border-radius:var(--radius-md);background:var(--bg-secondary);margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:3px;">Reset notes settings</div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:10px;">Restores full edit history visibility for all notes on this contact only</div>
+      <button onclick="confirmResetNotesSettings(${clientId},${staffIdx})" style="height:30px;padding:0 14px;border:0.5px solid rgba(163,45,45,0.3);border-radius:var(--radius-md);background:transparent;color:#A32D2D;font-size:12px;cursor:pointer;font-family:var(--font);">Reset for this contact</button>
+    </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="m-cancel" onclick="openStaffProfile(${clientId},${staffIdx})">← Back</button>
+    </div>`);
+}
+
+function confirmResetNotesSettings(clientId,staffIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  const staffArr=getStaffArr(c);
+  const m=staffArr[staffIdx];
+  showModal(`
+    <h3>Reset notes settings?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will restore full edit history visibility for all notes on <strong>${esc(m?m.name:'this contact')}</strong>. The "(edited)" label and "see changes" will reappear on any notes that were edited.</p>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-top:6px;">This only affects this contact — no other contacts are changed.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="openAdminSettings(${clientId},${staffIdx})">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doResetNotesSettings(${clientId},${staffIdx})">Reset</button>
+    </div>`);
+}
+
+function doResetNotesSettings(clientId,staffIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  if(!staffArr[staffIdx])return;
+  const log=staffArr[staffIdx].notesLog;
+  if(Array.isArray(log)){
+    log.forEach(entry=>{entry.hideHistory=false;});
+  }
+  c.info.staff=JSON.stringify(staffArr);
+  save();
+  openAdminSettings(clientId,staffIdx);
+}
+
+function openNoteHistoryManager(clientId,staffIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  const m=staffArr[staffIdx];
+  const log=Array.isArray(m.notesLog)?m.notesLog:[];
+  const editedNotes=log.map((e,i)=>({entry:e,idx:i})).filter(({entry})=>entry.edited);
+
+  if(!editedNotes.length){
+    showModal(`
+      <h3>Manage note history</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.6;">No edited notes found for this contact.</p>
+      <div class="modal-actions"><button class="m-cancel" onclick="openAdminSettings(${clientId},${staffIdx})">← Back</button></div>`);
+    return;
+  }
+
+  const rows=editedNotes.map(({entry,idx})=>{
+    const suppressed=!!entry.hideHistory;
+    const preview=entry.text.length>60?entry.text.slice(0,60)+'…':entry.text;
+    return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:0.5px solid var(--border-light);">
+      <div style="flex:1;">
+        <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:3px;">${esc(entry.date)}</div>
+        <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">${esc(preview)}</div>
+        <div style="font-size:11px;margin-top:4px;color:${suppressed?'#A32D2D':'var(--text-tertiary)'};">${suppressed?'History hidden':'History visible'}</div>
+      </div>
+      <button onclick="toggleNoteHistoryVisibility(${clientId},${staffIdx},${idx})" style="flex-shrink:0;height:28px;padding:0 12px;border:0.5px solid ${suppressed?'rgba(163,45,45,0.3)':'var(--border-mid)'};border-radius:var(--radius-md);background:transparent;color:${suppressed?'#A32D2D':'var(--text-secondary)'};font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap;">
+        ${suppressed?'Show history':'Hide history'}
+      </button>
+    </div>`;
+  }).join('');
+
+  showModal(`
+    <h3>Manage note history</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;">Toggle visibility of "(edited)" and "See changes" per note. History data is always preserved.</p>
+    <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;max-height:300px;overflow-y:auto;">
+      ${rows}
+    </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="m-cancel" onclick="openAdminSettings(${clientId},${staffIdx})">← Back</button>
+    </div>`);
+}
+
+function toggleNoteHistoryVisibility(clientId,staffIdx,noteIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  const note=staffArr[staffIdx].notesLog[noteIdx];
+  if(!note)return;
+  note.hideHistory=!note.hideHistory;
+  c.info.staff=JSON.stringify(staffArr);
+  save();
+  openNoteHistoryManager(clientId,staffIdx);
+}
+
+function toggleAdminSetting(key,clientId,staffIdx){
+  if(!S.adminSettings) S.adminSettings={};
+  S.adminSettings[key]=!S.adminSettings[key];
+  save();
+  openAdminSettings(clientId,staffIdx);
+}
+
+function confirmAddNote(clientId,staffIdx){
+  const textarea=document.getElementById('sp-newnote');
+  const text=(textarea?textarea.value:'').trim();
+  if(!text)return;
+  window._pendingNote={clientId,staffIdx,text};
+  showModal(`
+    <h3>Add this note?</h3>
+    <div style="margin:10px 0;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;max-height:120px;overflow-y:auto;">${esc(text)}</div>
+    <div class="modal-actions">
+      <button class="m-cancel" onclick="openStaffProfile(${clientId},${staffIdx})">Cancel</button>
+      <button class="m-save" onclick="doAddNote()">Confirm</button>
+    </div>`);
+}
+
+function doAddNote(){
+  const{clientId,staffIdx,text}=window._pendingNote||{};
+  window._pendingNote=null;
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  if(!staffArr[staffIdx])return;
+  if(!Array.isArray(staffArr[staffIdx].notesLog)) staffArr[staffIdx].notesLog=[];
+  staffArr[staffIdx].notesLog.push({date:fmtDate(),text,edited:false});
+  c.info.staff=JSON.stringify(staffArr);
+  save();
+  openStaffProfile(clientId,staffIdx);
+}
+
+function startEditNote(clientId,staffIdx,noteIdx){
+  const textDiv=document.getElementById('note-text-'+noteIdx);
+  const editDiv=document.getElementById('note-edit-'+noteIdx);
+  if(textDiv) textDiv.style.display='none';
+  if(editDiv) editDiv.style.display='block';
+  const ta=document.getElementById('note-edit-ta-'+noteIdx);
+  if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+}
+
+function cancelEditNote(noteIdx){
+  const textDiv=document.getElementById('note-text-'+noteIdx);
+  const editDiv=document.getElementById('note-edit-'+noteIdx);
+  if(textDiv) textDiv.style.display='block';
+  if(editDiv) editDiv.style.display='none';
+}
+
+function confirmSaveNote(clientId,staffIdx,noteIdx){
+  const ta=document.getElementById('note-edit-ta-'+noteIdx);
+  const newText=(ta?ta.value:'').trim();
+  if(!newText)return;
+  window._pendingNoteEdit={clientId,staffIdx,noteIdx,newText};
+  showModal(`
+    <h3>Save edited note?</h3>
+    <div style="margin:10px 0;padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;max-height:120px;overflow-y:auto;">${esc(newText)}</div>
+    <div class="modal-actions">
+      <button class="m-cancel" onclick="openStaffProfile(${clientId},${staffIdx})">Cancel</button>
+      <button class="m-save" onclick="doSaveNoteEdit()">Save</button>
+    </div>`);
+}
+
+function doSaveNoteEdit(){
+  const{clientId,staffIdx,noteIdx,newText}=window._pendingNoteEdit||{};
+  window._pendingNoteEdit=null;
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  if(!staffArr[staffIdx]||!staffArr[staffIdx].notesLog[noteIdx])return;
+  const orig=staffArr[staffIdx].notesLog[noteIdx];
+  if(!Array.isArray(orig.history)) orig.history=[];
+  orig.history.push({date:orig.originalDate||orig.date,text:orig.text});
+  if(!orig.originalDate) orig.originalDate=orig.date;
+  orig.editedAt=fmtDate();
+  orig.text=newText;
+  orig.edited=true;
+  c.info.staff=JSON.stringify(staffArr);
+  save();
+  openStaffProfile(clientId,staffIdx);
+}
+
+function inlineDeleteNote(clientId,staffIdx,noteIdx){
+  const el=document.getElementById('note-actions-'+noteIdx);
+  if(!el)return;
+  const orig=el.innerHTML;
+  el.innerHTML=`<span style="flex:1;font-size:11px;color:var(--text-primary);">Delete this note?</span>
+    <button type="button" onclick="document.getElementById('note-actions-${noteIdx}').innerHTML=this._orig" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    <button type="button" onclick="doDeleteNote(${clientId},${staffIdx},${noteIdx})" style="height:22px;padding:0 8px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);">Delete</button>`;
+  el.querySelector('button')._orig=orig;
+}
+
+function confirmDeleteNote(clientId,staffIdx,noteIdx){inlineDeleteNote(clientId,staffIdx,noteIdx);}
+
+function doDeleteNote(clientId,staffIdx,noteIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  if(!staffArr[staffIdx])return;
+  staffArr[staffIdx].notesLog.splice(noteIdx,1);
+  c.info.staff=JSON.stringify(staffArr);
+  save();
+  openStaffProfile(clientId,staffIdx);
+}
+
+function confirmSaveStaffProfile(clientId,staffIdx){
+  showModal(`
+    <h3>Save profile changes?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will update the contact's title, phone, and email.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="openStaffProfile(${clientId},${staffIdx})">Cancel</button>
+      <button class="m-save" onclick="doSaveStaffProfile(${clientId},${staffIdx})">Save</button>
+    </div>`);
+}
+
+function doSaveStaffProfile(clientId,staffIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const staffArr=getStaffArr(c);
+  if(!staffArr[staffIdx])return;
+  staffArr[staffIdx].title=(document.getElementById('sp-title')||{}).value||'';
+  staffArr[staffIdx].phone=(document.getElementById('sp-phone')||{}).value||'';
+  staffArr[staffIdx].email=(document.getElementById('sp-email')||{}).value||'';
+  c.info.staff=JSON.stringify(staffArr);
+  save();closeModal();renderDetail(document.getElementById('app'));
+}
+
+function addStaffNote(clientId,staffIdx){confirmAddNote(clientId,staffIdx);}
+function saveStaffProfile(clientId,staffIdx){confirmSaveStaffProfile(clientId,staffIdx);}
+
+
+
+function renderStaffEditor(staffArr){
+  if(!staffArr.length) return '';
+  return`<div style="border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;margin-bottom:8px;">
+    <div style="display:grid;grid-template-columns:18px 1fr 1fr 1fr 1fr 28px;gap:0;background:var(--bg-tertiary);border-bottom:0.5px solid var(--border-mid);padding:5px 8px;">
+      <div></div>
+      <div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;padding:0 4px;">Name</div>
+      <div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;padding:0 4px;">Title / Role</div>
+      <div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;padding:0 4px;">Phone</div>
+      <div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;padding:0 4px;">Email</div>
+      <div></div>
+    </div>
+    ${staffArr.map((m,i)=>`
+    <div class="staff-row" id="sr-${i}" draggable="true" data-idx="${i}" style="display:grid;grid-template-columns:18px 1fr 1fr 1fr 1fr 28px;gap:0;align-items:center;padding:4px 8px;border-bottom:0.5px solid var(--border-light);background:var(--bg-primary);">
+      <span class="staff-handle" style="cursor:grab;color:var(--text-tertiary);font-size:14px;user-select:none;line-height:1;">⠿</span>
+      <input id="sn-${i}" value="${esc(m.name||'')}" placeholder="Name" style="height:28px;padding:0 6px;border:0.5px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);font-size:12px;font-weight:500;font-family:var(--font);width:100%;"/>
+      <input id="st-${i}" value="${esc(m.title||'')}" placeholder="—" style="height:28px;padding:0 6px;border:0.5px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);font-size:12px;font-family:var(--font);width:100%;"/>
+      <input id="sp-${i}" value="${esc(m.phone||'')}" placeholder="—" style="height:28px;padding:0 6px;border:0.5px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);font-size:12px;font-family:var(--font);width:100%;"/>
+      <input id="se-${i}" value="${esc(m.email||'')}" placeholder="—" style="height:28px;padding:0 6px;border:0.5px solid transparent;border-radius:4px;background:transparent;color:var(--text-primary);font-size:12px;font-family:var(--font);width:100%;"/>
+      <button class="icon-btn" style="color:var(--text-tertiary);font-size:14px;justify-self:center;" onclick="removeStaffMember(${i})">×</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+function initStaffDragSort(){
+  const editor=document.getElementById('staff-editor');
+  if(!editor)return;
+  let dragEl=null,dragOver=null;
+  editor.querySelectorAll('.staff-row').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      if(!e.target.classList.contains('staff-handle')){e.preventDefault();return;}
+      dragEl=row;
+      setTimeout(()=>row.style.opacity='0.4',0);
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>{
+      editor.querySelectorAll('.staff-row').forEach(r=>{r.style.opacity='1';r.style.outline='';});
+      if(dragEl&&dragOver&&dragEl!==dragOver){
+        const staff=readStaffFromDOM();
+        const from=parseInt(dragEl.dataset.idx);
+        const to=parseInt(dragOver.dataset.idx);
+        const moved=staff.splice(from,1)[0];
+        staff.splice(to,0,moved);
+        document.getElementById('staff-editor').innerHTML=renderStaffEditor(staff);
+        rebindStaffIndices();
+        initStaffDragSort();
+      }
+      dragEl=null;dragOver=null;
+    });
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(row!==dragEl){
+        dragOver=row;
+        editor.querySelectorAll('.staff-row').forEach(r=>r.style.outline='');
+        row.style.outline='2px solid var(--border-strong)';
+      }
+    });
+  });
+}
+
+function readStaffFromDOM(){
+  const rows=document.querySelectorAll('.staff-row');
+  const result=[];
+  rows.forEach((r,i)=>{
+    const n=(document.getElementById('sn-'+i)||{}).value||'';
+    const t=(document.getElementById('st-'+i)||{}).value||'';
+    const p=(document.getElementById('sp-'+i)||{}).value||'';
+    const e=(document.getElementById('se-'+i)||{}).value||'';
+    if(n.trim()||t.trim()||p.trim()||e.trim()) result.push({name:n.trim(),title:t.trim(),phone:p.trim(),email:e.trim()});
+  });
+  return result;
+}
+
+function addStaffMember(){
+  const current=readStaffFromDOM();
+  current.push({name:'',title:'',phone:'',email:''});
+  document.getElementById('staff-editor').innerHTML=renderStaffEditor(current);
+  rebindStaffIndices();
+  initStaffDragSort();
+}
+
+function removeStaffMember(idx){
+  const row=document.getElementById('sr-'+idx);
+  if(!row)return;
+  const nameEl=document.getElementById('sn-'+idx);
+  const name=nameEl&&nameEl.value.trim()?nameEl.value.trim():'this team member';
+  const orig=row.innerHTML;
+  const origStyle=row.style.cssText;
+  row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:0.5px solid var(--border-light);background:var(--bg-secondary);';
+  row.innerHTML=`<span style="flex:1;font-size:12px;color:var(--text-primary);">Remove <strong>${esc(name)}</strong>?</span>
+    <button type="button" style="height:24px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);" onclick="cancelRemoveStaff(${idx})">Cancel</button>
+    <button type="button" style="height:24px;padding:0 10px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);" onclick="doRemoveStaffMember(${idx})">Remove</button>`;
+  row._origHtml=orig;
+  row._origStyle=origStyle;
+}
+
+function cancelRemoveStaff(idx){
+  const row=document.getElementById('sr-'+idx);
+  if(row&&row._origHtml){row.innerHTML=row._origHtml;row.style.cssText=row._origStyle;}
+}
+
+function doRemoveStaffMember(idx){
+  const current=readStaffFromDOM();
+  // If called from inline (with idx), remove that index; otherwise fall back to pending
+  if(idx!==undefined){
+    current.splice(idx,1);
+  } else {
+    const{idx:pi}=window._pendingStaffRemove||{};
+    window._pendingStaffRemove=null;
+    if(pi===undefined)return;
+    current.splice(pi,1);
+  }
+  document.getElementById('staff-editor').innerHTML=renderStaffEditor(current);
+  rebindStaffIndices();
+  initStaffDragSort();
+}
+
+function rebindStaffIndices(){
+  document.querySelectorAll('.staff-row').forEach((r,i)=>{
+    r.id='sr-'+i;
+    r.dataset.idx=i;
+    ['sn','st','sp','se'].forEach(p=>{const el=r.querySelector(`[id^="${p}-"]`);if(el)el.id=p+'-'+i;});
+    const btn=r.querySelector('.icon-btn');
+    if(btn) btn.setAttribute('onclick',`removeStaffMember(${i})`);
+  });
+}
+
+function openClientModal(id){
+  window._currentClientModalId=id;
+  const c=id?S.clients.find(x=>x.id===id):null;
+  const inf=(c&&c.info)||{};
+  const fields=getClientFields(id);
+  const fieldRows=fields.map(f=>{
+    if(f.key==='staff'){
+      let staffArr=[];
+      try{staffArr=JSON.parse(inf.staff||'[]');}catch(e){if(inf.staff)staffArr=[{name:inf.staff,title:'',phone:''}];}
+      if(!Array.isArray(staffArr)||!staffArr.length) staffArr=[];
+      return`<div class="fgroup">
+        <div class="flabel" style="margin-bottom:6px;">${esc(f.label)}</div>
+        <div id="staff-editor">${renderStaffEditor(staffArr)}</div>
+        <button onclick="addStaffMember()" style="display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;font-family:var(--font);width:100%;">
+          <span style="font-size:14px;">+</span> Add staff member
+        </button>
+      </div>`;
+    }
+    const v=esc(inf[f.key]||'');
+    if(f.key==='timezone'){
+      const tzOpts=['','CT — Central Time','ET — Eastern Time','MT — Mountain Time','PT — Pacific Time','AKT — Alaska Time','HT — Hawaii Time'];
+      return`<div class="fgroup"><div class="flabel">${esc(f.label)}</div><select id="mf-${esc(f.key)}">${tzOpts.map(t=>`<option value="${esc(t)}"${(inf[f.key]||'')==t?' selected':''}>${t||'Select time zone...'}</option>`).join('')}</select></div>`;
+    }
+    if(f.type==='textarea') return`<div class="fgroup"><div class="flabel">${esc(f.label)}</div><textarea id="mf-${esc(f.key)}" placeholder="${esc(f.placeholder||'')}">${v}</textarea></div>`;
+    return`<div class="fgroup"><div class="flabel">${esc(f.label)}</div><input id="mf-${esc(f.key)}" value="${v}" placeholder="${esc(f.placeholder||'')}"/></div>`;
+  }).join('');
+  const practices=c?getPractices(c):[c?c.name:''];
+  const storedPracticeColors=c&&c.practiceColors?c.practiceColors:{};
+  const PRACTICE_PALETTE=[
+    {bg:'#E6F1FB',txt:'#0C447C',name:'Blue'},
+    {bg:'#FAEEDA',txt:'#633806',name:'Amber'},
+    {bg:'#E1F5EE',txt:'#085041',name:'Green'},
+    {bg:'#FBEAF0',txt:'#72243E',name:'Pink'},
+    {bg:'#EEEDFE',txt:'#3C3489',name:'Purple'},
+    {bg:'#EAF3DE',txt:'#274F0A',name:'Sage'},
+    {bg:'#FAECE7',txt:'#712B13',name:'Coral'},
+    {bg:'#FCEBEB',txt:'#791F1F',name:'Red'},
+    {bg:'#F1EFE8',txt:'#444441',name:'Gray'},
+  ];
+  const practicesHtml=practices.map((p,i)=>{
+    const curColor=storedPracticeColors[p]||PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
+    const opts=PRACTICE_PALETTE.map((col,ci)=>`<option value="${ci}" ${curColor.bg===col.bg?'selected':''}>${col.name}</option>`).join('');
+    return`<div id="prac-row-${i}" style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
+      <span id="prac-swatch-${i}" style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${curColor.bg};flex-shrink:0;border:0.5px solid rgba(0,0,0,0.1);"></span>
+      <input id="prac-color-bg-${i}" type="hidden" value="${curColor.bg}"/>
+      <input id="prac-color-txt-${i}" type="hidden" value="${curColor.txt}"/>
+      <input value="${esc(p)}" id="prac-${i}" placeholder="Practice name" style="flex:1;height:30px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);"/>
+      <select onchange="selectPracticeColorByIndex(${i},this.value)" style="height:30px;padding:0 4px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-size:10px;font-family:var(--font);cursor:pointer;width:60px;">${opts}</select>
+      <button type="button" class="icon-btn" style="color:#A32D2D;font-size:15px;" onclick="removePracticeRow(${i})">×</button>
+    </div>`;
+  }).join('');
+
+  const billingContacts=Array.isArray(c&&c.billingContacts)?c.billingContacts:[];
+  const billingContactsHtml=renderBillingContactsEditor(billingContacts);
+
+  showModal(`
+    <h3>${id?'Edit client':'New client'}</h3>
+    <div class="fgroup"><div class="flabel">Client name</div><input id="m-name" value="${esc(c?c.name:'')}" placeholder="Practice name"/></div>
+    ${fieldRows}
+    <div class="fgroup" style="margin-top:8px;">
+      <div class="flabel" style="margin-bottom:6px;">Billing contacts</div>
+      <div id="billing-contacts-editor">${billingContactsHtml}</div>
+      <button onclick="addBillingContact()" style="display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;font-family:var(--font);width:100%;margin-top:4px;"><span style="font-size:14px;">+</span> Add billing contact</button>
+    </div>
+    <div class="fgroup" style="margin-top:8px;">
+      <div class="flabel" style="margin-bottom:6px;">Practices <span style="font-weight:400;color:var(--text-tertiary);">(first is the default)</span></div>
+      <div id="practices-editor">${practicesHtml}</div>
+      <button onclick="addPracticeField()" style="display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;font-family:var(--font);width:100%;margin-top:4px;"><span style="font-size:14px;">+</span> Add practice</button>
+    </div>
+    <div class="modal-actions">
+      ${id?`<button class="m-danger" onclick="confirmDeleteClient(${id})">Delete client</button>`:''}
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="saveClientModal(${id||'null'})">Save</button>
+    </div>
+    <div style="margin-top:10px;text-align:left;">
+      <button onclick="promptAdvancedFields(${id||'null'})" style="background:none;border:none;font-size:11px;color:var(--text-tertiary);cursor:pointer;font-family:var(--font);padding:0;">Advanced settings</button>
+    </div>`);
+  setTimeout(()=>{initStaffDragSort();}, 0);
+}
+
+function renderBillingContactsEditor(contacts){
+  if(!contacts.length) return '';
+  return contacts.map((bc,i)=>{
+    const emails=(bc.emails||[]).map((e,ei)=>`
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+        <input value="${esc(e)}" id="bc-email-${i}-${ei}" placeholder="Email" style="flex:1;height:26px;padding:0 7px;border:0.5px solid var(--border-mid);border-radius:4px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;font-family:var(--font);"/>
+        <button type="button" onclick="removeBillingItem('email',${i},${ei})" style="color:#A32D2D;background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">×</button>
+      </div>`).join('');
+    const phones=(bc.phones||[]).map((p,pi)=>`
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+        <input value="${esc(p)}" id="bc-phone-${i}-${pi}" placeholder="Phone" style="flex:1;height:26px;padding:0 7px;border:0.5px solid var(--border-mid);border-radius:4px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;font-family:var(--font);"/>
+        <button type="button" onclick="removeBillingItem('phone',${i},${pi})" style="color:#A32D2D;background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">×</button>
+      </div>`).join('');
+    return`<div id="bc-row-${i}" style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:8px;background:var(--bg-secondary);">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <input value="${esc(bc.name||'')}" id="bc-name-${i}" placeholder="Contact name" style="flex:1;height:30px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;font-weight:500;font-family:var(--font);"/>
+        <input value="${esc(bc.title||'')}" id="bc-title-${i}" placeholder="Title / role" style="flex:1;height:30px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;font-family:var(--font);"/>
+        <button type="button" onclick="removeBillingContact(${i})" style="color:#A32D2D;background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px;">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Email</div>
+          <div id="bc-emails-${i}">${emails}</div>
+          <button type="button" onclick="addBillingItem('email',${i})" style="font-size:11px;color:var(--text-tertiary);background:none;border:none;cursor:pointer;padding:0;font-family:var(--font);">+ Add email</button>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Phone</div>
+          <div id="bc-phones-${i}">${phones}</div>
+          <button type="button" onclick="addBillingItem('phone',${i})" style="font-size:11px;color:var(--text-tertiary);background:none;border:none;cursor:pointer;padding:0;font-family:var(--font);">+ Add phone</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addBillingContact(){
+  const editor=document.getElementById('billing-contacts-editor');
+  if(!editor)return;
+  const i=editor.querySelectorAll('[id^="bc-row-"]').length;
+  const div=document.createElement('div');
+  div.innerHTML=renderBillingContactsEditor([{name:'',title:'',emails:[''],phones:['']}]).replace(/bc-row-0/g,`bc-row-${i}`).replace(/bc-name-0/g,`bc-name-${i}`).replace(/bc-title-0/g,`bc-title-${i}`).replace(/bc-emails-0/g,`bc-emails-${i}`).replace(/bc-phones-0/g,`bc-phones-${i}`).replace(/'email',0/g,`'email',${i}`).replace(/'phone',0/g,`'phone',${i}`).replace(/removeBillingContact\(0\)/g,`removeBillingContact(${i})`).replace(/bc-email-0-/g,`bc-email-${i}-`).replace(/bc-phone-0-/g,`bc-phone-${i}-`);
+  editor.appendChild(div.firstElementChild);
+}
+
+function addBillingItem(type,ci){
+  const container=document.getElementById(`bc-${type}s-${ci}`);
+  if(!container)return;
+  const idx=container.querySelectorAll('input').length;
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;align-items:center;gap:4px;margin-bottom:4px;';
+  div.innerHTML=`<input value="" id="bc-${type}-${ci}-${idx}" placeholder="${type==='email'?'Email':'Phone'}" style="flex:1;height:26px;padding:0 7px;border:0.5px solid var(--border-mid);border-radius:4px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;font-family:var(--font);"/>
+    <button type="button" onclick="this.closest('div').remove()" style="color:#A32D2D;background:none;border:none;font-size:14px;cursor:pointer;padding:0 2px;">×</button>`;
+  container.appendChild(div);
+}
+
+function removeBillingItem(type,ci,idx){
+  const el=document.getElementById(`bc-${type}-${ci}-${idx}`);
+  if(el&&el.parentNode) el.parentNode.remove();
+}
+
+function removeBillingContact(ci){
+  const row=document.getElementById('bc-row-'+ci);
+  if(!row)return;
+  const orig=row.innerHTML;
+  row.style.background='var(--bg-tertiary)';
+  row.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+    <span style="flex:1;font-size:12px;color:var(--text-primary);">Remove this billing contact?</span>
+    <button type="button" onclick="document.getElementById('bc-row-${ci}').innerHTML=this._o;document.getElementById('bc-row-${ci}').style.background='var(--bg-secondary)';" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    <button type="button" onclick="document.getElementById('bc-row-${ci}').remove()" style="height:22px;padding:0 8px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);">Remove</button>
+  </div>`;
+  row.querySelector('button')._o=orig;
+}
+
+function readBillingContactsFromDOM(){
+  const editor=document.getElementById('billing-contacts-editor');
+  if(!editor)return[];
+  const contacts=[];
+  editor.querySelectorAll('[id^="bc-row-"]').forEach((row,i)=>{
+    const nameEl=document.getElementById('bc-name-'+i);
+    const titleEl=document.getElementById('bc-title-'+i);
+    if(!nameEl)return;
+    const emails=[...row.querySelectorAll('[id^="bc-email-'+i+'-"]')].map(el=>el.value.trim()).filter(Boolean);
+    const phones=[...row.querySelectorAll('[id^="bc-phone-'+i+'-"]')].map(el=>el.value.trim()).filter(Boolean);
+    contacts.push({name:(nameEl.value||'').trim(),title:(titleEl?titleEl.value:'').trim(),emails,phones});
+  });
+  return contacts.filter(bc=>bc.name||bc.emails.length||bc.phones.length);
+}
+
+function addBillingContact_placeholder(){}
+
+function selectPracticeColorByIndex(rowIdx, palIdx){
+  const col=([
+    {bg:'#E6F1FB',txt:'#0C447C'},{bg:'#FAEEDA',txt:'#633806'},{bg:'#E1F5EE',txt:'#085041'},
+    {bg:'#FBEAF0',txt:'#72243E'},{bg:'#EEEDFE',txt:'#3C3489'},{bg:'#EAF3DE',txt:'#274F0A'},
+    {bg:'#FAECE7',txt:'#712B13'},{bg:'#FCEBEB',txt:'#791F1F'},{bg:'#F1EFE8',txt:'#444441'},
+  ])[palIdx];
+  if(!col)return;
+  const swatch=document.getElementById('prac-swatch-'+rowIdx);
+  const bgIn=document.getElementById('prac-color-bg-'+rowIdx);
+  const txtIn=document.getElementById('prac-color-txt-'+rowIdx);
+  if(swatch) swatch.style.background=col.bg;
+  if(bgIn) bgIn.value=col.bg;
+  if(txtIn) txtIn.value=col.txt;
+}
+
+function selectPracticeColor(idx,bg,txt){
+  const swatch=document.getElementById('prac-swatch-'+idx);
+  const bgIn=document.getElementById('prac-color-bg-'+idx);
+  const txtIn=document.getElementById('prac-color-txt-'+idx);
+  if(swatch) swatch.style.background=bg;
+  if(bgIn) bgIn.value=bg;
+  if(txtIn) txtIn.value=txt;
+}
+
+function removePracticeRow(idx){
+  const row=document.getElementById('prac-row-'+idx);
+  if(!row)return;
+  const nameEl=document.getElementById('prac-'+idx);
+  const name=nameEl?nameEl.value.trim()||'this practice':'this practice';
+  // Replace row contents with inline confirm
+  const orig=row.innerHTML;
+  row.innerHTML=`<span style="flex:1;font-size:12px;color:var(--text-primary);">Remove <strong>${esc(name)}</strong>?</span>
+    <button type="button" style="height:26px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);" onclick="cancelRemovePracticeRow(${idx},this)">Cancel</button>
+    <button type="button" style="height:26px;padding:0 10px;border:none;border-radius:var(--radius-md);background:#A32D2D;color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);" onclick="document.getElementById('prac-row-${idx}').remove()">Remove</button>`;
+  row._origHtml=orig;
+}
+
+function cancelRemovePracticeRow(idx,btn){
+  const row=document.getElementById('prac-row-'+idx);
+  if(row&&row._origHtml) row.innerHTML=row._origHtml;
+}
+
+function confirmRemovePracticeField(btn){removePracticeRow(btn);}
+function doRemovePracticeRow(){}
+function doRemovePracticeField(){}
+function removePracticeField(){}
+
+function initPracticeDragSort(){}
+
+function addPracticeField(){
+  const editor=document.getElementById('practices-editor');
+  if(!editor)return;
+  const existing=editor.querySelectorAll('[id^="prac-row-"]');
+  const i=existing.length;
+  const PRACTICE_PALETTE=[
+    {bg:'#E6F1FB',txt:'#0C447C',name:'Blue'},{bg:'#FAEEDA',txt:'#633806',name:'Amber'},{bg:'#E1F5EE',txt:'#085041',name:'Green'},
+    {bg:'#FBEAF0',txt:'#72243E',name:'Pink'},{bg:'#EEEDFE',txt:'#3C3489',name:'Purple'},{bg:'#EAF3DE',txt:'#274F0A',name:'Sage'},
+    {bg:'#FAECE7',txt:'#712B13',name:'Coral'},{bg:'#FCEBEB',txt:'#791F1F',name:'Red'},{bg:'#F1EFE8',txt:'#444441',name:'Gray'},
+  ];
+  const col=PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
+  const opts=PRACTICE_PALETTE.map((c,ci)=>`<option value="${ci}"${ci===i%PRACTICE_PALETTE.length?' selected':''}>${c.name}</option>`).join('');
+  const div=document.createElement('div');
+  div.id='prac-row-'+i;
+  div.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:7px;';
+  div.innerHTML=`<span id="prac-swatch-${i}" style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${col.bg};flex-shrink:0;border:0.5px solid rgba(0,0,0,0.1);"></span>
+    <input id="prac-color-bg-${i}" type="hidden" value="${col.bg}"/>
+    <input id="prac-color-txt-${i}" type="hidden" value="${col.txt}"/>
+    <input value="" id="prac-${i}" placeholder="Practice name" style="flex:1;height:30px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);"/>
+    <select onchange="selectPracticeColorByIndex(${i},this.value)" style="height:30px;padding:0 4px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-size:10px;font-family:var(--font);cursor:pointer;width:60px;">${opts}</select>
+    <button type="button" class="icon-btn" style="color:#A32D2D;font-size:15px;" onclick="removePracticeRow(${i})">×</button>`;
+  editor.appendChild(div);
+}
+
+function removePracticeField(btn){confirmRemovePracticeField(btn);}
+
+function readPracticesFromDOM(){
+  const editor=document.getElementById('practices-editor');
+  if(!editor)return[];
+  return [...editor.querySelectorAll('input[id^="prac-"]:not([type="hidden"])')].map(el=>el.value.trim()).filter(Boolean);
+}
+
+function saveClientModal(id){
+  const name=val('m-name').trim();
+  if(!name){alert('Client name is required.');return;}
+  const fields=getClientFields(id);
+  const info={};
+  fields.forEach(f=>{
+    if(f.key==='staff'){
+      info.staff=JSON.stringify(readStaffFromDOM());
+    } else {
+      const el=document.getElementById('mf-'+f.key);
+      if(el)info[f.key]=(el.value||'').trim();
+    }
+  });
+  const practices=[];
+  const practiceColors={};
+  let i=0;
+  while(document.getElementById('prac-row-'+i)){
+    const nameEl=document.getElementById('prac-'+i);
+    const bgEl=document.getElementById('prac-color-bg-'+i);
+    const txtEl=document.getElementById('prac-color-txt-'+i);
+    const name=nameEl?nameEl.value.trim():'';
+    if(name){
+      practices.push(name);
+      if(bgEl&&txtEl) practiceColors[name]={bg:bgEl.value,txt:txtEl.value};
+    }
+    i++;
+  }
+  const billingContacts=readBillingContactsFromDOM();
+  if(id){
+    const c=S.clients.find(x=>x.id===id);
+    c.name=name;c.info=info;
+    c.practices=practices.length>1?practices:null;
+    c.practiceColors=practiceColors;
+    c.billingContacts=billingContacts;
+  } else {
+    S.clients.push({id:S.nCid++,name,ci:S.clients.length%COLORS.length,info,practices:practices.length>1?practices:null,practiceColors,billingContacts});
+  }
+  save();closeModal();render();
+}
+
+function getClientFields(clientId){
+  const base=S.fields||DEFAULT_FIELDS;
+  if(!clientId||clientId==='null') return base;
+  const c=S.clients.find(x=>x.id===clientId||x.id===parseInt(clientId));
+  if(!c||!c.fields) return base;
+  const existing=c.fields;
+  const existingKeys=existing.map(f=>f.key);
+  const missing=DEFAULT_FIELDS.filter(f=>!existingKeys.includes(f.key));
+  return missing.length?[...existing,...missing]:existing;
+}
+
+function promptAdvancedFields(clientId){
+  showModal(`
+    <h3>Advanced settings</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">You are entering advanced settings. Changes apply to this client only unless you choose otherwise.</p>
+    <div class="fgroup" style="margin-top:8px;">
+      <div class="flabel">Password</div>
+      <input id="adv-pw" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkAdvancedPassword(${clientId})"/>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="m-cancel" onclick="openClientModal(${clientId==='null'?'null':clientId})">Cancel</button>
+      <button class="m-save" onclick="checkAdvancedPassword(${clientId})">Continue</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('adv-pw');if(el)el.focus();},50);
+}
+
+function checkAdvancedPassword(clientId){
+  const pw=document.getElementById('adv-pw');
+  if(!pw)return;
+  if(pw.value.toLowerCase().replace(/\s/g,'')!=='harrypotter'){
+    pw.style.border='0.5px solid #A32D2D';
+    pw.value='';
+    pw.placeholder='Incorrect — try again';
+    pw.focus();
+    return;
+  }
+  openAdvancedFields(clientId);
+}
+
+function openAdvancedFields(clientId){
+  const fields=getClientFields(clientId);
+  const rows=fields.map((f,i)=>`
+    <div class="af-row" draggable="true" data-idx="${i}" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:default;">
+      <span class="af-handle" style="cursor:grab;color:var(--text-tertiary);font-size:16px;padding:0 2px;user-select:none;line-height:1;">⠿</span>
+      <input value="${esc(f.label)}" placeholder="Field name" style="flex:1;height:32px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);" id="af-label-${i}"/>
+      <select style="height:32px;padding:0 6px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:12px;font-family:var(--font);" id="af-type-${i}">
+        <option value="text"${f.type==='text'?' selected':''}>Text</option>
+        <option value="textarea"${f.type==='textarea'?' selected':''}>Textarea</option>
+        <option value="timezone"${f.type==='timezone'?' selected':''}>Timezone</option>
+      </select>
+      <button class="icon-btn" style="color:#A32D2D;font-size:16px;" onclick="removeAdvancedField(${i},${clientId})">×</button>
+    </div>`).join('');
+  showModal(`
+    <h3>Advanced settings</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">Drag ⠿ to reorder. Editing fields for this client only. Use "Apply to all" to push to every client.</p>
+    <div id="af-rows">${rows}</div>
+    <button onclick="addAdvancedField(${clientId})" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;font-family:var(--font);margin-bottom:12px;width:100%;"><span style="font-size:15px;">+</span> Add field</button>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button onclick="resetFieldOrder(${clientId})" style="flex:1;height:32px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);">Reset order</button>
+      <button onclick="confirmResetFields(${clientId})" style="flex:1;height:32px;padding:0 10px;border:0.5px solid rgba(163,45,45,0.3);border-radius:var(--radius-md);background:transparent;color:#A32D2D;font-size:12px;cursor:pointer;font-family:var(--font);">Reset fields</button>
+    </div>
+    <div style="border-top:0.5px solid var(--border-light);padding-top:10px;display:flex;gap:6px;">
+      <button class="m-cancel" style="flex:1;" onclick="openClientModal(${clientId==='null'?'null':clientId})">← Back</button>
+      <button onclick="saveAdvancedFields(${clientId},false)" style="flex:1;height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);">Save for this client</button>
+      <button onclick="confirmApplyAll(${clientId})" style="flex:1;height:34px;padding:0 10px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);">Apply to all</button>
+    </div>`);
+  initDragSort(clientId);
+}
+
+function initDragSort(clientId){
+  const container=document.getElementById('af-rows');
+  if(!container)return;
+  let dragEl=null,dragOver=null;
+  container.querySelectorAll('.af-row').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      dragEl=row;
+      setTimeout(()=>row.style.opacity='0.4',0);
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>{
+      row.style.opacity='1';
+      container.querySelectorAll('.af-row').forEach(r=>r.style.borderTop='');
+      if(dragEl&&dragOver&&dragEl!==dragOver){
+        const fields=readAdvancedFieldsFromDOM(clientId);
+        const fromIdx=parseInt(dragEl.dataset.idx);
+        const toIdx=parseInt(dragOver.dataset.idx);
+        const moved=fields.splice(fromIdx,1)[0];
+        fields.splice(toIdx,0,moved);
+        setClientFieldsTemp(clientId,fields);
+        openAdvancedFields(clientId);
+      }
+      dragEl=null;dragOver=null;
+    });
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(row!==dragEl){
+        dragOver=row;
+        container.querySelectorAll('.af-row').forEach(r=>r.style.borderTop='');
+        row.style.borderTop='2px solid var(--border-strong)';
+      }
+    });
+  });
+}
+
+function confirmApplyAll(clientId){
+  showModal(`
+    <h3>Apply to all clients?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will overwrite the field structure for every client with these settings. Individual client data is preserved where field keys match.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="openAdvancedFields(${clientId})">Cancel</button>
+      <button class="m-save" onclick="saveAdvancedFields(${clientId},true)">Apply to all</button>
+    </div>`);
+}
+
+function resetFieldOrder(clientId){
+  const current=readAdvancedFieldsFromDOM(clientId);
+  const defaultKeys=DEFAULT_FIELDS.map(f=>f.key);
+  const defaultFields=DEFAULT_FIELDS.map(dk=>{
+    const existing=current.find(f=>f.key===dk.key);
+    return existing||dk;
+  });
+  const extras=current.filter(f=>!defaultKeys.includes(f.key));
+  const reordered=[...defaultFields,...extras];
+  setClientFieldsTemp(clientId,reordered);
+  openAdvancedFields(clientId);
+}
+
+function confirmResetFields(clientId){
+  showModal(`
+    <h3>Reset fields?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will restore the original field names and order for this client. Custom fields will be removed. Saved data is not affected.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="openAdvancedFields(${clientId})">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doResetFields(${clientId})">Reset</button>
+    </div>`);
+}
+
+function doResetFields(clientId){
+  setClientFieldsTemp(clientId,JSON.parse(JSON.stringify(DEFAULT_FIELDS)));
+  openAdvancedFields(clientId);
+}
+
+function setClientFieldsTemp(clientId,fields){
+  if(!clientId||clientId==='null'){S.fields=fields;return;}
+  const c=S.clients.find(x=>x.id===parseInt(clientId));
+  if(c) c.fields=fields;
+}
+
+function addAdvancedField(clientId){
+  const fields=readAdvancedFieldsFromDOM(clientId);
+  fields.push({key:'custom_'+Date.now(),label:'New field',type:'text',placeholder:''});
+  setClientFieldsTemp(clientId,fields);
+  openAdvancedFields(clientId);
+}
+
+function removeAdvancedField(idx,clientId){
+  const fields=readAdvancedFieldsFromDOM(clientId);
+  const field=fields[idx];
+  const label=field&&field.label?field.label:'this field';
+  window._pendingFieldRemove={idx,clientId};
+  showModal(`
+    <h3>Remove field?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;"><strong>${esc(label)}</strong> will be removed. Any data saved in this field for this client will no longer be visible.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="openAdvancedFields(${clientId})">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doRemoveAdvancedField()">Remove</button>
+    </div>`);
+}
+
+function doRemoveAdvancedField(){
+  const{idx,clientId}=window._pendingFieldRemove||{};
+  window._pendingFieldRemove=null;
+  const fields=readAdvancedFieldsFromDOM(clientId);
+  fields.splice(idx,1);
+  setClientFieldsTemp(clientId,fields);
+  openAdvancedFields(clientId);
+}
+
+function readAdvancedFieldsFromDOM(clientId){
+  const existing=getClientFields(clientId);
+  return existing.map((f,i)=>{
+    const labelEl=document.getElementById('af-label-'+i);
+    const typeEl=document.getElementById('af-type-'+i);
+    return{key:f.key,label:labelEl?labelEl.value.trim()||f.label:f.label,type:typeEl?typeEl.value:f.type,placeholder:f.placeholder||''};
+  });
+}
+
+function saveAdvancedFields(clientId,applyAll){
+  const fields=readAdvancedFieldsFromDOM(clientId);
+  if(applyAll){
+    S.fields=fields;
+    S.clients.forEach(c=>{c.fields=JSON.parse(JSON.stringify(fields));});
+  } else {
+    setClientFieldsTemp(clientId,fields);
+  }
+  save();
+  openClientModal(clientId==='null'?null:parseInt(clientId));
+}
+
+function getPractices(c){
+  if(!c) return [];
+  const saved=Array.isArray(c.practices)&&c.practices.length?c.practices:null;
+  return saved||[c.name];
+}
+
+function openLinkModal(linkId,prefClientId){
+  const l=linkId?S.links.find(x=>x.id===linkId):null;
+  const existingCats=[...new Set(S.links.map(x=>x.category))].sort();
+  const defClient=l?l.clientId:prefClientId||(S.clients[0]?S.clients[0].id:null);
+  const clientOpts=S.clients.map(c=>`<option value="${c.id}"${defClient===c.id?' selected':''}>${esc(c.name)}</option>`).join('');
+  const catOpts=existingCats.map(c=>`<option value="${esc(c)}">`).join('');
+  const selClient=S.clients.find(c=>c.id===defClient)||S.clients[0];
+  const practices=selClient?getPractices(selClient):[];
+  const practiceRow=practices.length>1?`
+    <div class="fgroup"><div class="flabel">Practice</div>
+      <select id="m-practice">
+        <option value="">— All practices (shared)</option>
+        ${practices.map(p=>`<option value="${esc(p)}"${(l&&l.practice===p)?' selected':''}>${esc(p)}</option>`).join('')}
+      </select>
+    </div>`:'<input type="hidden" id="m-practice" value=""/>';
+
+  showModal(`
+    <h3>${l?'Edit link':'Add spreadsheet link'}</h3>
+    <div class="fgroup"><div class="flabel">Client</div><select id="m-client" onchange="refreshPracticeDropdown()">${clientOpts}</select></div>
+    <div id="practice-row">${practiceRow}</div>
+    <div class="fgroup"><div class="flabel">Category</div>
+      <input id="m-cat" list="cat-dl" value="${esc(l?l.category:'')}" placeholder="e.g. Media Plan, Budget, Tracker"/>
+      <datalist id="cat-dl">${catOpts}</datalist>
+    </div>
+    <div class="fgroup"><div class="flabel">Button label (optional — defaults to category name)</div>
+      <input id="m-label" value="${esc(l?l.label:'')}" placeholder="Leave blank to use category name"/>
+    </div>
+    <div class="fgroup"><div class="flabel">Spreadsheet URL</div>
+      <input id="m-url" value="${esc(l?l.url:'')}" placeholder="https://docs.google.com/spreadsheets/..."/>
+    </div>
+    <div class="modal-actions">
+      ${l?`<button class="m-danger" onclick="confirmDeleteLink(${l.id})">Delete link</button>`:''}
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="saveLinkModal(${linkId||'null'})">Save</button>
+    </div>`);
+}
+
+function refreshPracticeDropdown(){
+  const cid=parseInt(val('m-client'));
+  const c=S.clients.find(x=>x.id===cid);
+  const practices=c?getPractices(c):[];
+  const row=document.getElementById('practice-row');
+  if(!row)return;
+  if(practices.length>1){
+    row.innerHTML=`<div class="fgroup"><div class="flabel">Practice</div>
+      <select id="m-practice">
+        <option value="">— All practices (shared)</option>
+        ${practices.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('')}
+      </select></div>`;
+  } else {
+    row.innerHTML='<input type="hidden" id="m-practice" value=""/>';
+  }
+}
+
+function saveLinkModal(id){
+  const cid=parseInt(val('m-client'));
+  const cat=val('m-cat').trim();
+  const lbl=val('m-label').trim()||cat;
+  const url=val('m-url').trim();
+  const practice=val('m-practice').trim()||null;
+  if(!cat){alert('Category is required.');return;}
+  if(id){const l=S.links.find(x=>x.id===id);l.clientId=cid;l.category=cat;l.label=lbl;l.url=url;l.practice=practice;}
+  else{S.links.push({id:S.nLid++,clientId:cid,label:lbl,category:cat,url,practice});}
+  save();closeModal();render();
+}
+
+function confirmDeleteClient(id){
+  const c=S.clients.find(x=>x.id===id);
+  showModal(`
+    <h3>Delete client?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">"<strong>${esc(c?c.name:'this client')}</strong>" and all their links will be permanently removed.</p>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doDeleteClient(${id})">Delete</button>
+    </div>`);
+}
+
+function doDeleteClient(id){
+  S.clients=S.clients.filter(c=>c.id!==id);
+  S.links=S.links.filter(l=>l.clientId!==id);
+  if(filter===id)filter='all';
+  if(detailId===id)detailId=null;
+  save();closeModal();render();
+}
+
+function inlineConfirm(el,label,onConfirm){
+  const orig=el.innerHTML;
+  const origStyle=el.style.cssText;
+  el.style.cssText='display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-secondary);border-radius:var(--radius-md);';
+  el.innerHTML=`<span style="flex:1;font-size:11px;color:var(--text-primary);">Remove <strong>${esc(label)}</strong>?</span>
+    <button type="button" onclick="this.closest('[data-ic]')._cancelIc()" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    <button type="button" onclick="this.closest('[data-ic]')._confirmIc()" style="height:22px;padding:0 8px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);">Remove</button>`;
+  el.setAttribute('data-ic','1');
+  el._cancelIc=()=>{el.innerHTML=orig;el.style.cssText=origStyle;el.removeAttribute('data-ic');};
+  el._confirmIc=onConfirm;
+}
+
+function confirmDeleteLink(id){
+  const l=S.links.find(x=>x.id===id);
+  showModal(`
+    <h3>Delete file?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">"<strong>${esc(l?l.label:'this file')}</strong>" will be permanently removed.</p>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doDeleteLink(${id})">Delete</button>
+    </div>`);
+}
+
+function doDeleteLink(id){
+  S.links=S.links.filter(l=>l.id!==id);
+  save();closeModal();render();
+}
+
+function deleteLink(id){
+  const l=S.links.find(x=>x.id===id);
+  const label=l?l.label:'this file';
+  // Find the × button for this link in the DOM
+  const btns=[...document.querySelectorAll(`[onclick*="deleteLink(${id})"]`)];
+  if(btns.length){
+    const btn=btns[0];
+    const row=btn.closest('.lt-row,.link-chip')||btn.parentElement;
+    inlineConfirm(row,label,()=>{S.links=S.links.filter(l=>l.id!==id);save();render();});
+  } else {
+    confirmDeleteLink(id);
+  }
+}
+
+function addClient(){
+  const inp=document.getElementById('nc-inp');
+  if(!inp)return;
+  const name=inp.value.trim();
+  if(!name)return;
+  S.clients.push({id:S.nCid++,name,ci:S.clients.length%COLORS.length,info:{}});
+  inp.value='';
+  save();render();
+}
+
+function exportBackup(){
+  const now=new Date();
+  const stamp=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+  const filename=`GMJ_Dashboard_Backup_${stamp}.json`;
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importBackup(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      if(!parsed.clients||!Array.isArray(parsed.clients)) throw new Error('Invalid backup file — missing clients.');
+      window._pendingImport=parsed;
+      showModal(`
+        <h3>Restore backup?</h3>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will replace all current data with the contents of <strong>${esc(file.name)}</strong>. This cannot be undone.</p>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:6px;">Backup contains <strong>${parsed.clients.length} clients</strong> and <strong>${(parsed.links||[]).length} links</strong>.</p>
+        <div class="modal-actions" style="margin-top:12px;">
+          <button class="m-cancel" onclick="closeModal()">Cancel</button>
+          <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doImportBackup()">Restore</button>
+        </div>`);
+    }catch(err){
+      showModal(`<h3>Import failed</h3><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">${esc(err.message)}</p><div class="modal-actions"><button class="m-save" onclick="closeModal()">OK</button></div>`);
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+function doImportBackup(){
+  try{
+    if(!window._pendingImport) throw new Error('No backup data found.');
+    S=window._pendingImport;
+    window._pendingImport=null;
+    save();closeModal();render();
+  }catch(e){
+    showModal(`<h3>Restore failed</h3><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">${esc(e.message)}</p><div class="modal-actions"><button class="m-save" onclick="closeModal()">OK</button></div>`);
+  }
+}
+
+function switchView(v){view=v;filter='all';render();}
+function setFilter(f){filter=f;render();}
+function openDetail(id){detailId=id;render();}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+function debugRecoverData(){
+  const keys=Object.keys(localStorage);
+  const gmjKeys=keys.filter(k=>k.includes('gmj')||k.includes('dashboard')||k.includes('csd'));
+  let found='Keys in localStorage:\n'+keys.join('\n')+'\n\nGMJ-related:\n';
+  gmjKeys.forEach(k=>{
+    try{
+      const v=JSON.parse(localStorage.getItem(k));
+      found+=`\n${k}: ${v.clients?v.clients.length+' clients':''} ${v.links?v.links.length+' links':''}`;
+      if(v.clients){
+        v.clients.forEach(c=>{
+          let staffArr=[];
+          try{staffArr=JSON.parse((c.info&&c.info.staff)||'[]');}catch(e){}
+          const noteCount=staffArr.reduce((acc,s)=>acc+(s.notesLog?s.notesLog.length:0),0);
+          found+=`\n  ${c.name}: ${noteCount} notes`;
+        });
+      }
+    }catch(e){found+=`\n${k}: (parse error)`;}
+  });
+  showModal(`<h3>Data Recovery</h3><pre style="font-size:11px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;max-height:300px;overflow-y:auto;background:var(--bg-secondary);padding:10px;border-radius:var(--radius-md);margin-top:8px;">${found}</pre><div class="modal-actions"><button class="m-cancel" onclick="closeModal()">Close</button><button class="m-save" onclick="tryRestoreFromAllKeys()">Try restore</button></div>`);
+}
+
+function tryRestoreFromAllKeys(){
+  const keys=Object.keys(localStorage);
+  let best=null,bestScore=0;
+  keys.forEach(k=>{
+    try{
+      const v=JSON.parse(localStorage.getItem(k));
+      if(v&&Array.isArray(v.clients)){
+        let score=v.clients.length;
+        v.clients.forEach(c=>{
+          let staffArr=[];
+          try{staffArr=JSON.parse((c.info&&c.info.staff)||'[]');}catch(e){}
+          score+=staffArr.reduce((acc,s)=>acc+(s.notesLog?s.notesLog.length:0),0)*10;
+        });
+        if(score>bestScore){bestScore=score;best={key:k,data:v};}
+      }
+    }catch(e){}
+  });
+  if(best){
+    showModal(`<h3>Found candidate</h3><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.6;">Key: <strong>${best.key}</strong><br>${best.data.clients.length} clients found. Restore this data?</p><div class="modal-actions"><button class="m-cancel" onclick="closeModal()">Cancel</button><button class="m-save" onclick="doRestoreKey('${best.key}')">Restore</button></div>`);
+  } else {
+    showModal(`<h3>Nothing found</h3><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">No recoverable data found in localStorage.</p><div class="modal-actions"><button class="m-save" onclick="closeModal()">OK</button></div>`);
+  }
+}
+
+function doRestoreKey(key){
+  try{
+    S=JSON.parse(localStorage.getItem(key));
+    save();closeModal();render();
+  }catch(e){
+    showModal(`<h3>Restore failed</h3><p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">${e.message}</p><div class="modal-actions"><button class="m-save" onclick="closeModal()">OK</button></div>`);
+  }
+}
+function toggleSettingsMenu(){
+  const menu=document.getElementById('settings-menu');
+  if(!menu)return;
+  const isOpen=menu.style.display!=='none';
+  menu.style.display=isOpen?'none':'block';
+  if(!isOpen){
+    setTimeout(()=>document.addEventListener('click',closeSettingsOnOutside),0);
+  }
+}
+function closeSettingsMenu(){
+  const menu=document.getElementById('settings-menu');
+  if(menu)menu.style.display='none';
+  document.removeEventListener('click',closeSettingsOnOutside);
+}
+function closeSettingsOnOutside(e){
+  const btn=document.getElementById('settings-btn');
+  const menu=document.getElementById('settings-menu');
+  if(menu&&btn&&!menu.contains(e.target)&&!btn.contains(e.target)){
+    closeSettingsMenu();
+  }
+}
+
+function openBillingSettings(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const b=c.billing||{};
+  showModal(`
+    <h3>Billing settings — ${esc(c.name)}</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+      <div class="fgroup">
+        <div class="flabel">Monthly amount ($)</div>
+        <input id="b-amount" type="number" min="0" step="0.01" value="${esc(b.monthlyAmount||'')}" placeholder="e.g. 2500.00" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Billing day of month (1–28)</div>
+        <input id="b-day" type="number" min="1" max="28" value="${esc(b.billingDay||'')}" placeholder="e.g. 1 for the 1st, 15 for the 15th" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">Used to calculate past-due status. Max 28 to avoid month-end issues.</div>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="saveBillingSettings(${clientId})">Save</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('b-amount');if(el)el.focus();},50);
+}
+
+function saveBillingSettings(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const amount=parseFloat(document.getElementById('b-amount').value)||0;
+  const day=parseInt(document.getElementById('b-day').value)||0;
+  if(day&&(day<1||day>28)){alert('Billing day must be between 1 and 28.');return;}
+  if(!c.billing) c.billing={};
+  c.billing.monthlyAmount=amount||null;
+  c.billing.billingDay=day||null;
+  save();closeModal();render();
+}
+
+function confirmEnableAccounting(){
+  showModal(`
+    <h3>Open Accounting?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;">This will show payment info and controls on each client card.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="accountingMode=true;closeModal();render()">Open Accounting</button>
+    </div>`);
+}
+
+function openMarkPaid(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const today=new Date().toISOString().split('T')[0];
+  const presetAmount=(c.billing&&c.billing.monthlyAmount)?c.billing.monthlyAmount:'';
+  const billingContacts=Array.isArray(c.billingContacts)?c.billingContacts:[];
+  const billingRow=billingContacts.length?`<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;line-height:1.7;">
+    ${billingContacts.map(bc=>`<div><strong style="color:var(--text-secondary);">${esc(bc.name)}${bc.title?` — ${esc(bc.title)}`:''}</strong>${(bc.emails||[]).map(e=>`<span> · <a href="mailto:${esc(e)}" style="color:var(--text-secondary);text-decoration:none;">${esc(e)}</a></span>`).join('')}${(bc.phones||[]).map(p=>`<span> · ${esc(p)}</span>`).join('')}</div>`).join('')}
+  </div>`:'';
+  showModal(`
+    <h3>Mark payment — ${esc(c.name)}</h3>
+    ${billingRow}
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+      <div class="fgroup">
+        <div class="flabel">Amount ($)${presetAmount?` <span style="font-weight:400;color:var(--text-tertiary);">— pre-filled from billing settings</span>`:''}</div>
+        <input id="pay-amount" type="number" min="0" step="0.01" value="${presetAmount}" placeholder="0.00" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Payment date</div>
+        <input id="pay-date" type="date" value="${today}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Note (optional)</div>
+        <input id="pay-note" placeholder="e.g. Monthly retainer, Invoice #123" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="confirmMarkPaid(${clientId})">Record payment</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('pay-amount');if(el){el.focus();el.select();}},50);
+}
+
+function confirmMarkPaid(clientId){
+  const amount=parseFloat(document.getElementById('pay-amount').value)||0;
+  const date=document.getElementById('pay-date').value;
+  const note=document.getElementById('pay-note').value.trim();
+  if(!amount||amount<=0){alert('Please enter a valid amount.');return;}
+  if(!date){alert('Please select a date.');return;}
+  const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  window._pendingPayment={clientId,amount,date,fmt,note};
+  showModal(`
+    <h3>Confirm payment?</h3>
+    <div style="padding:12px 14px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-top:10px;">
+      <div style="font-size:13px;font-weight:500;color:var(--text-primary);">$${amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">${fmt}</div>
+      ${note?`<div style="font-size:12px;color:var(--text-tertiary);margin-top:3px;">${esc(note)}</div>`:''}
+    </div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="openMarkPaid(${clientId})">← Back</button>
+      <button class="m-save" onclick="doMarkPaid()">Confirm</button>
+    </div>`);
+}
+
+function doMarkPaid(){
+  const{clientId,amount,date,fmt,note}=window._pendingPayment||{};
+  window._pendingPayment=null;
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  if(!Array.isArray(c.payments)) c.payments=[];
+  c.payments.push({id:Date.now(),amount,date,fmt,note,recorded:new Date().toISOString()});
+  save();closeModal();render();
+}
+
+function openPaymentHistory(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const payments=Array.isArray(c.payments)?[...c.payments].reverse():[];
+  const total=payments.reduce((sum,p)=>sum+Number(p.amount),0);
+
+  const years=[...new Set(payments.map(p=>p.date.slice(0,4)))].sort().reverse();
+  const months=['All','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const rows=payments.length?payments.map((p,i)=>`
+    <div id="pay-row-${p.id}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border-light);background:var(--bg-primary);">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary);">$${Number(p.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">${esc(p.fmt||p.date)}${p.note?` · ${esc(p.note)}`:''}</div>
+      </div>
+      <button onclick="inlineDeletePayment(${clientId},${p.id},this)" style="font-size:11px;padding:2px 8px;border:0.5px solid rgba(163,45,45,0.3);border-radius:4px;background:transparent;color:#A32D2D;cursor:pointer;font-family:var(--font);">Delete</button>
+    </div>`).join('')
+    :'<div style="padding:16px;font-size:13px;color:var(--text-tertiary);font-style:italic;text-align:center;">No payments recorded yet.</div>';
+
+  showModal(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="flex:1;">
+        <h3>${esc(c.name)}</h3>
+        <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">Payment history</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:var(--text-tertiary);">Total collected</div>
+        <div style="font-size:18px;font-weight:500;color:var(--text-primary);">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      </div>
+    </div>
+    <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;max-height:320px;overflow-y:auto;">
+      ${rows}
+    </div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+      <button class="m-save" onclick="closeModal();openMarkPaid(${clientId})">+ Record payment</button>
+    </div>`);
+}
+
+function inlineDeletePayment(clientId,payId,btn){
+  const row=document.getElementById('pay-row-'+payId);
+  if(!row)return;
+  const orig=row.innerHTML;
+  row.style.background='var(--bg-secondary)';
+  row.innerHTML=`<span style="flex:1;font-size:12px;color:var(--text-primary);">Remove this payment?</span>
+    <button type="button" onclick="this.closest('#pay-row-${payId}').innerHTML='${orig.replace(/'/g,"\\'")}'" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    <button type="button" onclick="doDeletePayment(${clientId},${payId})" style="height:22px;padding:0 8px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);">Remove</button>`;
+}
+
+function confirmDeletePayment(clientId,payId){inlineDeletePayment(clientId,payId);}
+
+function doDeletePayment(clientId,payId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!c.payments)return;
+  c.payments=c.payments.filter(p=>p.id!==payId);
+  save();openPaymentHistory(clientId);
+}
+
+function openAccountingOverview(){
+  const allPayments=[];
+  S.clients.forEach(c=>{
+    (c.payments||[]).forEach(p=>{allPayments.push({...p,clientId:c.id,clientName:c.name,ci:c.ci});});
+  });
+
+  const years=[...new Set(allPayments.map(p=>p.date.slice(0,4)))].sort().reverse();
+  if(!years.length) years.push(new Date().getFullYear().toString());
+  const currentYear=years[0];
+  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const renderOverview=(yearFilter,monthFilter,clientFilter)=>{
+    let filtered=allPayments.filter(p=>{
+      if(yearFilter&&p.date.slice(0,4)!==yearFilter)return false;
+      if(monthFilter&&monthFilter!=='all'&&parseInt(p.date.slice(5,7))!==parseInt(monthFilter))return false;
+      if(clientFilter&&clientFilter!=='all'&&String(p.clientId)!==String(clientFilter))return false;
+      return true;
+    });
+    const total=filtered.reduce((s,p)=>s+Number(p.amount),0);
+
+    const byClient={};
+    filtered.forEach(p=>{
+      if(!byClient[p.clientId]) byClient[p.clientId]={name:p.clientName,ci:p.ci,total:0,count:0};
+      byClient[p.clientId].total+=Number(p.amount);
+      byClient[p.clientId].count++;
+    });
+
+    const clientRows=Object.entries(byClient).sort((a,b)=>b[1].total-a[1].total).map(([id,d])=>{
+      const col=COLORS[d.ci%COLORS.length];
+      return`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border-light);">
+        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${col.bg};color:${col.txt};">${ini(d.name)}</div>
+        <span style="flex:1;font-size:13px;color:var(--text-primary);">${esc(d.name)}</span>
+        <span style="font-size:11px;color:var(--text-tertiary);margin-right:8px;">${d.count} payment${d.count!==1?'s':''}</span>
+        <span style="font-size:13px;font-weight:500;color:var(--text-primary);">$${d.total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+      </div>`;
+    }).join('')||'<div style="padding:16px;text-align:center;font-size:13px;color:var(--text-tertiary);font-style:italic;">No payments for this period.</div>';
+
+    const yearOpts=years.map(y=>`<option value="${y}"${y===yearFilter?' selected':''}>${y}</option>`).join('');
+    const monthOpts=['<option value="all"'+(monthFilter==='all'?' selected':'')+'>All months</option>',
+      ...monthNames.map((m,i)=>`<option value="${i+1}"${parseInt(monthFilter)===i+1?' selected':''}>${m}</option>`)].join('');
+    const clientOpts=['<option value="all"'+(clientFilter==='all'?' selected':'')+'>All clients</option>',
+      ...S.clients.map(c=>`<option value="${c.id}"${String(clientFilter)===String(c.id)?' selected':''}>${esc(c.name)}</option>`)].join('');
+
+    const el=document.getElementById('acc-overview-body');
+    if(el) el.innerHTML=`
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <select onchange="window._accState.year=this.value;window._reloadOverview()" style="height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);">${yearOpts}</select>
+        <select onchange="window._accState.month=this.value;window._reloadOverview()" style="height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);">${monthOpts}</select>
+        <select onchange="window._accState.client=this.value;window._reloadOverview()" style="height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);">${clientOpts}</select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div class="detail-card"><div class="detail-card-title">Total collected</div><div style="font-size:20px;font-weight:500;color:var(--text-primary);margin-top:4px;">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+        <div class="detail-card"><div class="detail-card-title">Payments</div><div style="font-size:20px;font-weight:500;color:var(--text-primary);margin-top:4px;">${filtered.length}</div></div>
+      </div>
+      <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;">
+        <div style="padding:8px 12px;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);font-size:11px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;">By client</div>
+        ${clientRows}
+      </div>`;
+  };
+
+  window._accState={year:currentYear,month:'all',client:'all'};
+  window._reloadOverview=()=>renderOverview(window._accState.year,window._accState.month,window._accState.client);
+
+  showModal(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <h3 style="flex:1;">Payment overview</h3>
+    </div>
+    <div id="acc-overview-body"></div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+    </div>`);
+
+  setTimeout(()=>renderOverview(currentYear,'all','all'),0);
+}
+
+render();
+loadFromSupabase();
+</script>
+</body>
+</html>
