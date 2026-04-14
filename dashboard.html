@@ -441,7 +441,7 @@ function renderClients(){
       practiceColorMap[p]=storedColors[p]||PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
     });
 
-    let chips=visibleLinks.slice(0,4).map(l=>`
+    let chips=visibleLinks.map(l=>`
       <div class="link-chip" onclick="event.stopPropagation();if(event.target.closest('.icon-btn'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;" title="${l.url?esc(l.url):'No URL yet — click to add'}">
         <svg style="width:13px;height:13px;flex-shrink:0;opacity:${l.url?'0.5':'0.25'};" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
         <span class="chip-label" style="color:${l.url?'var(--text-primary)':'var(--text-tertiary)'};">${esc(l.label)}</span>
@@ -450,7 +450,7 @@ function renderClients(){
         ${editMode&&!clientMode?`<button class="icon-btn" onclick="event.stopPropagation();openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);">✎</button>
         <button class="icon-btn" onclick="event.stopPropagation();deleteLink(${l.id})" title="Delete">×</button>`:''}
       </div>`).join('');
-    if(visibleLinks.length>4) chips+=`<div style="font-size:11px;color:var(--text-tertiary);padding:2px 4px;">+${visibleLinks.length-4} more — click card to view all</div>`;
+    const chipsWrapper=visibleLinks.length>6?`<div style="max-height:210px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;">${chips}</div>`:`<div style="display:flex;flex-direction:column;gap:5px;">${chips}</div>`;
     const inf=c.info||{};
     const metaParts=[inf.doctor,inf.timezone?inf.timezone.split('—')[0].trim():''].filter(Boolean);
     const metaLine=metaParts.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-top:1px;line-height:1.4;">${esc(metaParts.join(' · '))}</div>`:'';
@@ -506,7 +506,7 @@ function renderClients(){
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;">
         ${tabBar}
-        ${chips||'<div style="font-size:12px;color:var(--text-tertiary);font-style:italic;padding:2px 0;">No files yet</div>'}
+        ${chipsWrapper||'<div style="font-size:12px;color:var(--text-tertiary);font-style:italic;padding:2px 0;">No files yet</div>'}
         ${editMode&&!clientMode?`<button class="add-row" onclick="event.stopPropagation();openLinkModal(null,${c.id})"><span style="font-size:15px;line-height:1;">+</span>&nbsp;Add link</button>`:''}
         ${paymentRow}
       </div>
@@ -1780,6 +1780,7 @@ function openLinkModal(linkId,prefClientId){
     ${addToAllRow}
     <div class="modal-actions">
       ${l?`<button class="m-danger" onclick="confirmDeleteLink(${l.id})">Delete file</button>`:''}
+      ${l?`<button class="m-danger" style="margin-left:0;" onclick="confirmDeleteCategoryAllClients('${esc(l.category)}')">Delete category for all clients</button>`:''}
       <button class="m-cancel" onclick="closeModal()">Cancel</button>
       <button class="m-save" onclick="saveLinkModal(${linkId||'null'})">Save</button>
     </div>`);
@@ -1824,10 +1825,11 @@ function saveLinkModal(id){
     else delete c.categoryOverrides[cat];
   }
 
-  // Add to all clients if checked
+  // Add to all clients if checked — skip current client since we save it below
   const addAll=document.getElementById('m-add-all');
   if(addAll&&addAll.checked){
     S.clients.forEach(cl=>{
+      if(cl.id===cid) return; // skip current client
       const already=S.links.some(lk=>lk.clientId===cl.id&&lk.category===cat);
       if(!already) S.links.push({id:S.nLid++,clientId:cl.id,label:lbl,category:cat,url:'',practice:null});
     });
@@ -1867,6 +1869,28 @@ function inlineConfirm(el,label,onConfirm){
   el.setAttribute('data-ic','1');
   el._cancelIc=()=>{el.innerHTML=orig;el.style.cssText=origStyle;el.removeAttribute('data-ic');};
   el._confirmIc=onConfirm;
+}
+
+function confirmDeleteCategoryAllClients(cat){
+  const count=S.links.filter(l=>l.category===cat).length;
+  showModal(`
+    <h3>Delete category for all clients?</h3>
+    <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);margin:10px 0;font-size:13px;color:var(--text-primary);">
+      <strong>${esc(cat)}</strong>
+    </div>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">This will permanently remove all <strong>${count}</strong> file${count!==1?'s':''} under this category across every client. This cannot be undone.</p>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;font-family:var(--font);" onclick="doDeleteCategoryAllClients('${esc(cat)}')">Delete all</button>
+    </div>`);
+}
+
+function doDeleteCategoryAllClients(cat){
+  S.links=S.links.filter(l=>l.category!==cat);
+  // Also clean up global hidden categories and client overrides
+  if(Array.isArray(S.hiddenCategories)) S.hiddenCategories=S.hiddenCategories.filter(c=>c!==cat);
+  S.clients.forEach(c=>{if(c.categoryOverrides) delete c.categoryOverrides[cat];});
+  save();closeModal();render();
 }
 
 function confirmDeleteLink(id){
