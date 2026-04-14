@@ -48,15 +48,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
-const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const _sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 async function signInWithGoogle(){
-  const{error}=await supabase.auth.signInWithOAuth({
+  const{error}=await _sb.auth.signInWithOAuth({
     provider:'google',
     options:{redirectTo:'https://spencer961.github.io/full-arch-authority/dashboard.html'}
   });
   if(error){document.getElementById('error-msg').style.display='block';console.error(error);}
 }
-supabase.auth.getSession().then(({data:{session}})=>{
+_sb.auth.getSession().then(({data:{session}})=>{
   if(session) window.location.href='dashboard.html';
 });
 </script>
