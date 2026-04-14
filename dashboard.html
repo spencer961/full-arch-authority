@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-(function(){
-  const url='https://jpeanlmbfylihxsvuamm.supabase.co';
-  const key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
-  const sb=window.supabase.createClient(url,key);
-  sb.auth.getSession().then(({data:{session}})=>{
-    if(!session) window.location.href='index.html';
-  });
-  window._sbClient=sb;
-})();
-</script>
-
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Full-Arch Authority</title>
@@ -428,9 +415,15 @@ function renderClients(){
     </div>`:'';
 
     const visibleLinks=links.filter(l=>{
-      if(!hasMultiple) return true;
-      if(!curPractice) return true;
-      return !l.practice||l.practice===curPractice;
+      if(hasMultiple&&curPractice&&l.practice&&l.practice!==curPractice) return false;
+      if(clientMode){
+        const cat=l.category;
+        const globalHidden=Array.isArray(S.hiddenCategories)&&S.hiddenCategories.includes(cat);
+        const override=c.categoryOverrides&&c.categoryOverrides[cat];
+        if(globalHidden&&override!=='show') return false;
+        if(!globalHidden&&override==='hidden') return false;
+      }
+      return true;
     });
     const PRACTICE_PALETTE=[
       {bg:'#E6F1FB',txt:'#0C447C'},
@@ -584,8 +577,15 @@ function renderDetail(app){
   const detailActivePractice=window._detailPractice&&window._detailPractice.clientId===c.id?window._detailPractice.val:null;
 
   const visibleLinks=links.filter(l=>{
-    if(!hasMultiplePractices||!detailActivePractice) return true;
-    return !l.practice||l.practice===detailActivePractice;
+    if(hasMultiplePractices&&detailActivePractice&&l.practice&&l.practice!==detailActivePractice) return false;
+    if(clientMode){
+      const cat=l.category;
+      const globalHidden=Array.isArray(S.hiddenCategories)&&S.hiddenCategories.includes(cat);
+      const override=c.categoryOverrides&&c.categoryOverrides[cat];
+      if(globalHidden&&override!=='show') return false;
+      if(!globalHidden&&override==='hidden') return false;
+    }
+    return true;
   });
 
   const practiceTabBar=hasMultiplePractices?`
@@ -1704,6 +1704,28 @@ function getPractices(c){
   return saved||[c.name];
 }
 
+function toggleSwitch(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const on=el.dataset.on==='1';
+  el.dataset.on=on?'0':'1';
+  el.style.background=on?'var(--border-mid)':'#4ade80';
+  el.querySelector('span').style.transform=on?'translateX(0)':'translateX(16px)';
+}
+
+function switchVal(id){return document.getElementById(id)?.dataset.on==='1';}
+
+function makeSwitchHtml(id,on,label){
+  const bg=on?'#4ade80':'var(--border-mid)';
+  const tx=on?'translateX(16px)':'translateX(0)';
+  return`<div style="display:flex;align-items:center;gap:10px;">
+    <button type="button" id="${id}" data-on="${on?'1':'0'}" onclick="toggleSwitch('${id}')" style="width:36px;height:20px;border-radius:10px;background:${bg};border:none;cursor:pointer;padding:2px;display:flex;align-items:center;transition:background .2s;position:relative;flex-shrink:0;">
+      <span style="width:16px;height:16px;border-radius:50%;background:#fff;display:block;transition:transform .2s;transform:${tx};"></span>
+    </button>
+    <span style="font-size:12px;color:var(--text-secondary);">${label}</span>
+  </div>`;
+}
+
 function openLinkModal(linkId,prefClientId){
   const l=linkId?S.links.find(x=>x.id===linkId):null;
   const existingCats=[...new Set(S.links.map(x=>x.category))].sort();
@@ -1720,12 +1742,32 @@ function openLinkModal(linkId,prefClientId){
       </select>
     </div>`:'<input type="hidden" id="m-practice" value=""/>';
 
+  const cat=l?l.category:'';
+  const globalHidden=cat&&Array.isArray(S.hiddenCategories)&&S.hiddenCategories.includes(cat);
+  const clientHidden=cat&&selClient&&selClient.categoryOverrides&&selClient.categoryOverrides[cat]==='hidden';
+  const clientShown=cat&&selClient&&selClient.categoryOverrides&&selClient.categoryOverrides[cat]==='show';
+  const globalVisible=!globalHidden;
+  const clientVisible=globalHidden?clientShown:!clientHidden;
+
+  const visibilitySection=`
+    <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);padding:10px 12px;background:var(--bg-secondary);display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:11px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.04em;">Client mode visibility</div>
+      ${makeSwitchHtml('m-global-vis',globalVisible,'Show for all clients')}
+      ${makeSwitchHtml('m-client-vis',clientVisible,'Show for this client')}
+    </div>`;
+
+  const addToAllRow=!l?`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+      <input type="checkbox" id="m-add-all" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent);"/>
+      <label for="m-add-all" style="font-size:12px;color:var(--text-secondary);cursor:pointer;">Add this category to all clients (empty URL)</label>
+    </div>`:'';
+
   showModal(`
-    <h3>${l?'Edit link':'Add spreadsheet link'}</h3>
+    <h3>${l?'Edit file':'Add spreadsheet link'}</h3>
     <div class="fgroup"><div class="flabel">Client</div><select id="m-client" onchange="refreshPracticeDropdown()">${clientOpts}</select></div>
     <div id="practice-row">${practiceRow}</div>
     <div class="fgroup"><div class="flabel">Category</div>
-      <input id="m-cat" list="cat-dl" value="${esc(l?l.category:'')}" placeholder="e.g. Media Plan, Budget, Tracker"/>
+      <input id="m-cat" list="cat-dl" value="${esc(cat)}" placeholder="e.g. Media Plan, Budget, Tracker" oninput="refreshVisibilityToggles()"/>
       <datalist id="cat-dl">${catOpts}</datalist>
     </div>
     <div class="fgroup"><div class="flabel">Button label (optional — defaults to category name)</div>
@@ -1734,28 +1776,27 @@ function openLinkModal(linkId,prefClientId){
     <div class="fgroup"><div class="flabel">Spreadsheet URL</div>
       <input id="m-url" value="${esc(l?l.url:'')}" placeholder="https://docs.google.com/spreadsheets/..."/>
     </div>
+    ${visibilitySection}
+    ${addToAllRow}
     <div class="modal-actions">
-      ${l?`<button class="m-danger" onclick="confirmDeleteLink(${l.id})">Delete link</button>`:''}
+      ${l?`<button class="m-danger" onclick="confirmDeleteLink(${l.id})">Delete file</button>`:''}
       <button class="m-cancel" onclick="closeModal()">Cancel</button>
       <button class="m-save" onclick="saveLinkModal(${linkId||'null'})">Save</button>
     </div>`);
 }
 
-function refreshPracticeDropdown(){
+function refreshVisibilityToggles(){
+  const cat=val('m-cat').trim();
+  if(!cat)return;
+  const globalHidden=Array.isArray(S.hiddenCategories)&&S.hiddenCategories.includes(cat);
   const cid=parseInt(val('m-client'));
   const c=S.clients.find(x=>x.id===cid);
-  const practices=c?getPractices(c):[];
-  const row=document.getElementById('practice-row');
-  if(!row)return;
-  if(practices.length>1){
-    row.innerHTML=`<div class="fgroup"><div class="flabel">Practice</div>
-      <select id="m-practice">
-        <option value="">— All practices (shared)</option>
-        ${practices.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('')}
-      </select></div>`;
-  } else {
-    row.innerHTML='<input type="hidden" id="m-practice" value=""/>';
-  }
+  const clientShown=c&&c.categoryOverrides&&c.categoryOverrides[cat]==='show';
+  const clientHidden=c&&c.categoryOverrides&&c.categoryOverrides[cat]==='hidden';
+  const gv=document.getElementById('m-global-vis');
+  const cv=document.getElementById('m-client-vis');
+  if(gv){gv.dataset.on=globalHidden?'0':'1';gv.style.background=globalHidden?'var(--border-mid)':'#4ade80';gv.querySelector('span').style.transform=globalHidden?'translateX(0)':'translateX(16px)';}
+  if(cv){const on=globalHidden?clientShown:!clientHidden;cv.dataset.on=on?'1':'0';cv.style.background=on?'#4ade80':'var(--border-mid)';cv.querySelector('span').style.transform=on?'translateX(16px)':'translateX(0)';}
 }
 
 function saveLinkModal(id){
@@ -1765,6 +1806,33 @@ function saveLinkModal(id){
   const url=val('m-url').trim();
   const practice=val('m-practice').trim()||null;
   if(!cat){alert('Category is required.');return;}
+
+  // Save global visibility
+  if(!Array.isArray(S.hiddenCategories)) S.hiddenCategories=[];
+  const globalVisible=switchVal('m-global-vis');
+  if(globalVisible) S.hiddenCategories=S.hiddenCategories.filter(c=>c!==cat);
+  else if(!S.hiddenCategories.includes(cat)) S.hiddenCategories.push(cat);
+
+  // Save per-client override
+  const c=S.clients.find(x=>x.id===cid);
+  if(c){
+    if(!c.categoryOverrides) c.categoryOverrides={};
+    const clientVisible=switchVal('m-client-vis');
+    const globalHidden=S.hiddenCategories.includes(cat);
+    if(globalHidden&&clientVisible) c.categoryOverrides[cat]='show';
+    else if(!globalHidden&&!clientVisible) c.categoryOverrides[cat]='hidden';
+    else delete c.categoryOverrides[cat];
+  }
+
+  // Add to all clients if checked
+  const addAll=document.getElementById('m-add-all');
+  if(addAll&&addAll.checked){
+    S.clients.forEach(cl=>{
+      const already=S.links.some(lk=>lk.clientId===cl.id&&lk.category===cat);
+      if(!already) S.links.push({id:S.nLid++,clientId:cl.id,label:lbl,category:cat,url:'',practice:null});
+    });
+  }
+
   if(id){const l=S.links.find(x=>x.id===id);l.clientId=cid;l.category=cat;l.label=lbl;l.url=url;l.practice=practice;}
   else{S.links.push({id:S.nLid++,clientId:cid,label:lbl,category:cat,url,practice});}
   save();closeModal();render();
