@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full-Arch Authority — Client Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f4;color:#1a1a1a;}
+input,textarea,button,select{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#0b1d5e!important;box-shadow:0 0 0 2px rgba(11,29,94,0.1)!important;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
+.sd{cursor:pointer;transition:transform 0.15s;}.sd:hover{transform:scale(1.12);}
+.row-hover:hover{background:#f9f9f8!important;}
+.client-card:hover{transform:translateY(-1px);}
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState,useMemo,useRef,useEffect}=React;
+const NAVY="#0b1d5e",GOLD="#bc9762",BG="#f5f5f4",BORDER="rgba(0,0,0,0.1)",TEXT="#1a1a1a",MUTED="#888786";
+const SC={red:"#ef4444",yellow:"#f59e0b",green:"#22c55e"};
+const CYCLE={red:"yellow",yellow:"green",green:"red"};
+const PW="harrypotter";
+const INP={width:"100%",padding:"10px 14px",borderRadius:8,background:"#f9f9f8",border:"0.5px solid rgba(0,0,0,0.15)",color:TEXT,fontSize:14,outline:"none",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",boxSizing:"border-box"};
+const CARD={background:"#fff",borderRadius:12,border:"0.5px solid rgba(0,0,0,0.1)",padding:"20px 24px"};
+const BTNP={padding:"9px 20px",borderRadius:8,border:"none",background:NAVY,color:GOLD,cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",letterSpacing:"0.01em"};
+const BTNS={padding:"8px 16px",borderRadius:8,border:"0.5px solid rgba(0,0,0,0.15)",background:"transparent",color:TEXT,cursor:"pointer",fontSize:13,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"};
+
+const DSEC=[
+  {id:"practice",title:"Practice Information",sub:"Tell us about your practice",fields:[
+    {id:"practiceName",label:"Practice Name",type:"text",required:true},
+    {id:"doctorName",label:"Doctor(s) or Owner(s) Name",type:"text",required:true},
+    {id:"officeManager",label:"Office Manager's Name",type:"text",required:true},
+  ]},
+  {id:"services",title:"Services & Pricing",sub:"What high-ticket services do you offer?",fields:[
+    {id:"services",label:"What type of implant / high-ticket cases do you provide?",type:"checkbox",required:true,options:["Full Fixed Arches / All-on-X","Overdentures / Implant Retained Dentures","Standard Dentures","Singles / Multiples Implants","Cosmetic Smile Makeovers","Orthodontic Treatment","Sleep Apnea","TMJ","Other"]},
+    {id:"pricing",label:"What do you charge for your high-ticket services?",type:"textarea",placeholder:"e.g. Full-fixed arch: $18,000, Single implant: $4,000..."},
+    {id:"currentPatients",label:"How many patients do you treat for each service per month?",type:"textarea",placeholder:"e.g. Singles: 8/mo, Full-fixed: 2/mo..."},
+    {id:"monthlyGoal",label:"What is your monthly production goal?",type:"textarea",placeholder:"e.g. Full-fixed: $50,000/mo..."},
+  ]},
+  {id:"brand",title:"Brand & Content",sub:"Your unique positioning and marketing assets",fields:[
+    {id:"uvp",label:"What makes you unique? Why should someone choose you over anyone else?",type:"textarea",placeholder:"Your unique value proposition..."},
+    {id:"videoTestimonials",label:"How many video testimonials / smile reveals do you have?",type:"text",placeholder:"e.g. 5 implant, 2 cosmetic"},
+    {id:"beforeAfterPhotos",label:"How many before & after photos do you have for marketing?",type:"text",placeholder:"e.g. 30 total"},
+    {id:"educationalVideos",label:"How many educational videos do you have for marketing?",type:"text",placeholder:"e.g. 3 explainer videos"},
+  ]},
+  {id:"marketing",title:"Marketing System",sub:"Your current lead generation activities",fields:[
+    {id:"marketingCampaigns",label:"What marketing campaigns are you currently running and what are you spending on each?",type:"textarea",placeholder:"e.g. Google PPC: $3,000/mo..."},
+    {id:"leadsPerChannel",label:"How many leads are you getting from each initiative?",type:"textarea",placeholder:"e.g. Google: 20/mo, Facebook: 15/mo..."},
+    {id:"howTrackResults",label:"How do you track the results or effectiveness of your marketing?",type:"textarea",placeholder:"Describe your tracking tools..."},
+  ]},
+  {id:"closing",title:"Closing System",sub:"Your process from lead to treatment start",fields:[
+    {id:"whoAnswersPhone",label:"Who answers the phone when implant leads call in?",type:"text",placeholder:"e.g. Dedicated appointment setter..."},
+    {id:"bookingRate",label:"What is your lead to scheduled consult rate?",type:"text",placeholder:"e.g. 40% or Not Sure"},
+    {id:"treatmentCoordinator",label:"Who is fulfilling the treatment coordinator role?",type:"text",placeholder:"Name and/or title"},
+    {id:"showRate",label:"What is your current show rate for consultations?",type:"text",placeholder:"e.g. 75% or Not Sure"},
+    {id:"closeRate",label:"What is your current treatment close rate?",type:"text",placeholder:"e.g. 30% or Not Sure"},
+    {id:"financingCompanies",label:"Which financing companies do you work with?",type:"text",placeholder:"e.g. CareCredit, Lending Club..."},
+  ]},
+  {id:"team",title:"Team & Training",sub:"Your team's skills and accountability",fields:[
+    {id:"teamTraining",label:"Describe the training you have provided your appointment setter(s) and treatment coordinator(s)",type:"textarea",placeholder:"Scripts, shadowing, formal programs..."},
+    {id:"teamAccountability",label:"How do you hold your team accountable?",type:"textarea",placeholder:"How do you monitor and measure performance?"},
+    {id:"incentives",label:"Describe any incentives you use to motivate your team",type:"textarea",placeholder:"Bonuses, commissions, non-financial rewards..."},
+  ]},
+  {id:"challenges",title:"Challenges & Goals",sub:"Where do you need the most help?",fields:[
+    {id:"mainIssues",label:"What are the main issues that need to be addressed?",type:"textarea",placeholder:"Be as specific as possible..."},
+  ]},
+];
+
+const CATS=[
+  {id:"clinical",name:"Clinical Excellence",items:[
+    {id:"implant_trained",name:"Implant Trained"},{id:"full_arch_trained",name:"Full-Arch Trained"},{id:"zygos_trained",name:"Zygos & Pterygoids Trained"},
+  ]},
+  {id:"operational",name:"Operational Excellence",items:[
+    {id:"mindset",name:"Mindset"},{id:"leadership",name:"Leadership"},{id:"profitability",name:"Profitability"},
+  ]},
+  {id:"brand",name:"Brand Messaging",items:[
+    {id:"uvp",name:"Unique Value Proposition",subs:[
+      {id:"uvp_primary",name:"Create a Primary UVP"},{id:"uvp_secondary",name:"Create Secondary UVPs"},
+      {id:"uvp_marketing",name:"Disseminate UVP(s) in Marketing"},{id:"uvp_appt_script",name:"Disseminate UVP(s) in Appointment Setting Script"},
+      {id:"uvp_consult_script",name:"Disseminate UVP(s) in Consultation Script"},
+    ]},
+    {id:"video_testimonials",name:"Video Testimonials / Smile Reveals",subs:[
+      {id:"vt_created",name:"Videos created & system in place"},{id:"vt_disseminated",name:"Disseminated in marketing"},
+    ]},
+    {id:"before_after",name:"Before & After Photos",subs:[
+      {id:"ba_created",name:"Photos created & system in place"},{id:"ba_disseminated",name:"Disseminated in marketing"},
+    ]},
+    {id:"reviews",name:"Online Ratings & Reviews",subs:[
+      {id:"rev_automated",name:"Automated Email & Text System"},{id:"rev_inoffice",name:"In-Office Reviews System"},
+    ]},
+    {id:"educational_videos",name:"Educational Videos",subs:[
+      {id:"ev_created",name:"Videos created & system in place"},{id:"ev_disseminated",name:"Disseminated in marketing"},
+    ]},
+  ]},
+  {id:"closing",name:"Closing System",items:[
+    {id:"team",name:"The Team",subs:[
+      {id:"team_appt_setter",name:"Appointment Setter"},{id:"team_tc",name:"Treatment Coordinator"},{id:"team_doctor",name:"Doctor"},
+    ]},
+    {id:"training_system",name:"Training System"},
+    {id:"accountability",name:"Accountability System",subs:[
+      {id:"acct_metrics",name:"Metrics Tracking"},{id:"acct_huddle",name:"Daily Huddle / Personal Reporting"},
+    ]},
+    {id:"closing_metrics",name:"Closing Metrics",subs:[
+      {id:"booking_rate",name:"Booking Rate"},{id:"show_rate",name:"Show Rate"},{id:"close_rate",name:"Close Rate"},
+    ]},
+    {id:"incentivization",name:"Incentivization System",subs:[
+      {id:"inc_appt",name:"Appointment Setter Reward System"},{id:"inc_tc",name:"Treatment Coordinator Reward System"},
+    ]},
+    {id:"financing",name:"Financing Companies"},
+  ]},
+  {id:"marketing",name:"Marketing System",items:[
+    {id:"patient_db",name:"Patient Database Marketing"},{id:"ppc",name:"Pay-Per-Click (PPC)"},{id:"lead_db",name:"Lead Database Marketing"},
+    {id:"website",name:"Website"},{id:"seo",name:"SEO"},{id:"ottctv",name:"OTT / Connected TV"},
+    {id:"tv_commercials",name:"TV Commercials"},{id:"tv_block",name:"TV Block Programming"},{id:"radio",name:"Radio"},
+    {id:"grassroots",name:"Grassroots Marketing",subs:[{id:"grass_social",name:"Social Posting"},{id:"grass_other",name:"Other Grassroots"}]},
+    {id:"roi_tracking",name:"Metric / ROI Tracking"},
+  ]},
+];
+
+const leafIds=(cats)=>cats.flatMap(c=>(c.items||[]).flatMap(i=>i.subs?i.subs.map(s=>s.id):[i.id]));
+const pScore=(sc,item)=>{if(!item.subs)return sc[item.id]||"red";const v=item.subs.map(s=>sc[s.id]||"red");if(v.every(x=>x==="green"))return"green";if(v.every(x=>x==="red"))return"red";return"yellow";};
+const health=(sc)=>{const ids=leafIds(CATS);const g=ids.filter(id=>(sc[id]||"red")==="green").length;return Math.round((g/ids.length)*100);};
+const mkS=(ov)=>{const s={};leafIds(CATS).forEach(id=>{s[id]="red";});return{...s,...ov};};
+const initScores=()=>{const s={};leafIds(CATS).forEach(id=>{s[id]="red";});return s;};
+
+// ── SAMPLE DATA ──────────────────────────────────────────────────────
+const SAMPLE_CLIENTS=[
+  {id:"c1",status:"active",submittedAt:"2024-12-01T10:00:00Z",
+   answers:{practiceName:"Elite Implant Center",doctorName:"Dr. Michael Chen",officeManager:"Sarah Martinez",services:["Full Fixed Arches / All-on-X","Singles / Multiples Implants"],pricing:"Full-fixed: $18,500/arch\nSingle implant: $4,200",monthlyGoal:"$120,000/mo",uvp:"Only practice within 50 miles offering same-day teeth. 800+ full arch cases completed.",videoTestimonials:"12",beforeAfterPhotos:"35",educationalVideos:"6",marketingCampaigns:"Google PPC: $4,000/mo\nFacebook: $2,500/mo",leadsPerChannel:"Google: 28/mo\nFacebook: 18/mo",whoAnswersPhone:"Maria (dedicated coordinator)",bookingRate:"35%",showRate:"78%",closeRate:"28%",financingCompanies:"CareCredit, Lending Club",teamTraining:"Monthly role-play sessions",teamAccountability:"Weekly KPI review",incentives:"Monthly bonus tied to close rate",mainIssues:"Show rate drops during holidays. Need better no-show follow-up system."},
+   snapshots:[
+     {id:"s1",label:"Dec 2024",date:"2024-12-01",notes:"Initial assessment. Strong clinical base, major gaps in brand and marketing.",scores:mkS({implant_trained:"yellow",full_arch_trained:"yellow",team_doctor:"green",uvp_primary:"yellow",ppc:"yellow",website:"yellow",grass_social:"yellow",show_rate:"yellow",team_appt_setter:"yellow",financing:"yellow"})},
+     {id:"s2",label:"Feb 2025",date:"2025-02-01",notes:"Good momentum. PPC and website green. Booking rate improving.",scores:mkS({implant_trained:"green",full_arch_trained:"yellow",mindset:"yellow",leadership:"yellow",profitability:"yellow",uvp_primary:"yellow",uvp_secondary:"yellow",vt_created:"yellow",ba_created:"yellow",rev_automated:"yellow",ev_created:"yellow",team_appt_setter:"green",team_tc:"yellow",team_doctor:"green",training_system:"yellow",acct_metrics:"yellow",booking_rate:"yellow",show_rate:"yellow",inc_appt:"yellow",financing:"green",patient_db:"yellow",ppc:"green",lead_db:"yellow",website:"green",seo:"yellow",grass_social:"green",roi_tracking:"yellow"})},
+     {id:"s3",label:"Apr 2025",date:"2025-04-01",notes:"Strong progress. Close rate now yellow. Focus on dissemination gaps.",scores:mkS({implant_trained:"green",full_arch_trained:"green",zygos_trained:"yellow",mindset:"yellow",leadership:"green",profitability:"yellow",uvp_primary:"green",uvp_secondary:"yellow",uvp_marketing:"yellow",vt_created:"green",vt_disseminated:"yellow",ba_created:"green",ba_disseminated:"yellow",rev_automated:"green",rev_inoffice:"yellow",ev_created:"green",team_appt_setter:"green",team_tc:"green",team_doctor:"green",training_system:"green",acct_metrics:"green",acct_huddle:"yellow",booking_rate:"yellow",show_rate:"green",close_rate:"yellow",inc_appt:"green",inc_tc:"yellow",financing:"green",patient_db:"green",ppc:"green",lead_db:"yellow",website:"green",seo:"yellow",grass_social:"green",grass_other:"yellow",roi_tracking:"green"})},
+   ]},
+  {id:"c2",status:"active",submittedAt:"2025-01-15T09:00:00Z",
+   answers:{practiceName:"Bright Smiles Dental",doctorName:"Dr. Anna Torres",officeManager:"Mike Johnson",services:["Singles / Multiples Implants","Cosmetic Smile Makeovers"],pricing:"Singles: $3,800 | Veneers: $1,200/tooth",monthlyGoal:"$60,000/mo",uvp:"10-year implant warranty. Bilingual staff — serving the Spanish-speaking community.",videoTestimonials:"3",beforeAfterPhotos:"12",educationalVideos:"1",marketingCampaigns:"Facebook Ads: $1,500/mo",leadsPerChannel:"Facebook: 22/mo",whoAnswersPhone:"Front desk rotates",bookingRate:"Not Sure",showRate:"60%",closeRate:"Not Sure",financingCompanies:"CareCredit only",teamTraining:"None formal",teamAccountability:"Weekly meeting",incentives:"None currently",mainIssues:"Leads coming in but not converting. Front desk overwhelmed. Need appointment setter."},
+   snapshots:[
+     {id:"s4",label:"Jan 2025",date:"2025-01-15",notes:"Initial assessment. Major gaps in closing system and tracking.",scores:mkS({implant_trained:"yellow",team_doctor:"yellow",uvp_primary:"yellow",vt_created:"red",ba_created:"yellow",grass_social:"yellow",financing:"yellow",show_rate:"yellow"})},
+     {id:"s5",label:"Mar 2025",date:"2025-03-01",notes:"Appointed dedicated setter. Booking rate improving. Close rate still unknown.",scores:mkS({implant_trained:"yellow",full_arch_trained:"red",mindset:"yellow",uvp_primary:"yellow",uvp_secondary:"red",vt_created:"yellow",ba_created:"yellow",rev_automated:"yellow",team_appt_setter:"yellow",team_tc:"red",team_doctor:"yellow",training_system:"yellow",acct_metrics:"yellow",booking_rate:"yellow",show_rate:"yellow",financing:"yellow",ppc:"red",website:"yellow",grass_social:"green",roi_tracking:"yellow"})},
+   ]},
+  {id:"c3",status:"pending",submittedAt:"2025-04-18T14:30:00Z",
+   answers:{practiceName:"Peak Dental Group",doctorName:"Dr. James Park",officeManager:"Linda Wu",services:["Full Fixed Arches / All-on-X","Overdentures / Implant Retained Dentures"],pricing:"Full-arch: $22,000 | Overdenture: $8,500",monthlyGoal:"$200,000/mo",uvp:"Hospital-grade sterilization. Same-day consultations available.",videoTestimonials:"0",beforeAfterPhotos:"8",educationalVideos:"0",marketingCampaigns:"Google PPC: $8,000/mo\nTV Commercials: $5,000/mo",leadsPerChannel:"Google: 45/mo\nTV: 20/mo",whoAnswersPhone:"Call center (3rd party)",bookingRate:"20%",showRate:"55%",closeRate:"15%",financingCompanies:"None currently",teamTraining:"None",teamAccountability:"None formal",incentives:"None",mainIssues:"Spending a lot on marketing but conversion is terrible. Call center is losing leads. No TC process at all."},
+   snapshots:[]},
+  {id:"c4",status:"pending",submittedAt:"2025-04-20T08:15:00Z",
+   answers:{practiceName:"Summit Oral & Implant",doctorName:"Dr. Rachel Kim",officeManager:"Tom Bradley",services:["Singles / Multiples Implants","Full Fixed Arches / All-on-X","Sleep Apnea"],pricing:"Singles: $4,500 | Full-arch: $20,000 | Sleep apnea: $3,200",monthlyGoal:"$150,000/mo",uvp:"Dual-specialty: oral surgery + prosthodontics in-house. No referrals needed.",videoTestimonials:"5",beforeAfterPhotos:"20",educationalVideos:"2",marketingCampaigns:"Google PPC: $5,000/mo\nSEO: $1,500/mo\nFacebook: $2,000/mo",leadsPerChannel:"Google: 30/mo\nSEO: 10/mo\nFacebook: 12/mo",whoAnswersPhone:"Dedicated coordinator (Emily)",bookingRate:"45%",showRate:"70%",closeRate:"22%",financingCompanies:"CareCredit, Proceed Finance",teamTraining:"Quarterly training sessions",teamAccountability:"Monthly scorecard reviews",incentives:"Quarterly bonus for close rate",mainIssues:"Close rate stuck at 22%. TC needs training on handling price objections. Want to add TV."},
+   snapshots:[]},
+];
+
+function App(){
+  const [view,setView]=useState("login");
+  const [clients,setClients]=useState(SAMPLE_CLIENTS);
+  const [selClient,setSelClient]=useState(null);
+  const [subview,setSubview]=useState("dashboard"); // dashboard | form-review | assessment | client-map
+  const [assScores,setAssScores]=useState({});
+  const [assNotes,setAssNotes]=useState("");
+  const [assLabel,setAssLabel]=useState("");
+  const [formStep,setFormStep]=useState(0);
+  const [formAns,setFormAns]=useState({});
+  const [formSecs,setFormSecs]=useState(DSEC);
+  const [clientView,setClientView]=useState(null); // client id for portal view
+  const [tr,setTr]=useState("3mo");
+  const [dv,setDv]=useState("table");
+  const [selM,setSelM]=useState(null);
+  const [exp,setExp]=useState({});
+  const [showAddClient,setShowAddClient]=useState(false);
+  const [newClient,setNewClient]=useState({practiceName:'',doctorName:'',officeManager:'',phone:'',email:''});
+  const [showGear,setShowGear]=useState(false);
+  const [editingForm,setEditingForm]=useState(false);
+  const [editAnswers,setEditAnswers]=useState({});
+  const [editStep,setEditStep]=useState(0);
+  const [pw,setPw]=useState("");
+  const [pwErr,setPwErr]=useState(false);
+  const scrollRef=useRef(null);
+
+  const pendingClients=clients.filter(c=>c.status==="pending");
+  const activeClients=clients.filter(c=>c.status==="active");
+  const client=selClient?clients.find(c=>c.id===selClient):null;
+
+  const allSnaps=useMemo(()=>client?[...client.snapshots].sort((a,b)=>new Date(a.date)-new Date(b.date)):[],[client]);
+  const vis=useMemo(()=>{if(tr==="3mo")return allSnaps.slice(-3);if(tr==="6mo")return allSnaps.slice(-6);if(tr==="1yr")return allSnaps.slice(-12);return allSnaps;},[allSnaps,tr]);
+  const is1yr=tr==="1yr";
+
+  useEffect(()=>{
+    if(is1yr&&scrollRef.current){
+      setTimeout(()=>{if(scrollRef.current)scrollRef.current.scrollLeft=scrollRef.current.scrollWidth;},80);
+    }
+  },[tr,vis]);
+
+  const cycleScore=(id)=>setAssScores(s=>({...s,[id]:CYCLE[s[id]||"red"]}));
+
+  const updateClient=(id,updates)=>setClients(cs=>cs.map(c=>c.id===id?{...c,...updates}:c));
+
+  const addClientManually=()=>{
+    if(!newClient.practiceName.trim())return;
+    const c={id:"c"+Date.now(),status:"pending",submittedAt:new Date().toISOString(),
+      answers:{practiceName:newClient.practiceName,doctorName:newClient.doctorName,officeManager:newClient.officeManager,phone:newClient.phone,email:newClient.email},
+      snapshots:[]};
+    setClients(cs=>[...cs,c]);
+    setNewClient({practiceName:'',doctorName:'',officeManager:'',phone:'',email:''});
+    setShowAddClient(false);
+    setSelClient(c.id);setSubview("form-review");
+  };
+
+  const publishSnapshot=()=>{
+    if(!selClient||!assLabel.trim())return;
+    const now=new Date();
+    const snap={id:"snap"+Date.now(),label:assLabel||now.toLocaleString("default",{month:"short",year:"numeric"}),date:now.toISOString(),scores:{...assScores},notes:assNotes};
+    updateClient(selClient,{status:"active",snapshots:[...client.snapshots,snap]});
+    setSubview("client-map");
+    setAssScores({});setAssNotes("");setAssLabel("");
+  };
+
+  const saveFormAnswers=()=>{
+    updateClient(selClient,{answers:{...editAnswers},status:clients.find(c=>c.id===selClient)?.status||"pending"});
+    setEditingForm(false);
+  };
+
+  const startEditForm=(c)=>{
+    setEditAnswers({...c.answers});
+    setEditStep(0);
+    setEditingForm(true);
+  };
+
+  const startAssessment=(clientId,prefill)=>{
+    setSelClient(clientId);
+    setAssScores(prefill||initScores());
+    setAssNotes("");
+    const now=new Date();
+    setAssLabel(now.toLocaleString("default",{month:"short",year:"numeric"}));
+    setSubview("assessment");
+  };
+
+  const submitClientForm=()=>{
+    const newClient={id:"c"+Date.now(),status:"pending",submittedAt:new Date().toISOString(),answers:{...formAns},snapshots:[]};
+    setClients(cs=>[...cs,newClient]);
+    setFormAns({});setFormStep(0);setView("form-confirm");
+  };
+
+  // ── SHARED COMPONENTS ──────────────────────────────────────────────
+  const Hdr=({right,sub,practiceName})=>(
+    <div style={{background:NAVY,padding:"14px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+      <div>
+        <div style={{fontWeight:700,fontSize:18,color:GOLD,letterSpacing:"0.01em",lineHeight:1.2}}>Full-Arch Authority</div>
+        {practiceName
+          ? <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}}>{practiceName}</div>
+          : sub&&<div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}}>{sub}</div>
+        }
+      </div>
+      {right}
+    </div>
+  );
+
+  const ScoreDot=({id,size=26,scores,onCycle})=>{
+    const s=scores[id]||"red";
+    return(<div className="sd" onClick={()=>onCycle&&onCycle(id)} style={{width:size,height:size,borderRadius:"50%",background:SC[s],display:"flex",alignItems:"center",justifyContent:"center",fontSize:size>22?11:10,color:"#fff",fontWeight:700,flexShrink:0,boxShadow:"0 0 8px "+SC[s]+"55"}}>{s==="green"?"✓":s==="yellow"?"~":"!"}</div>);
+  };
+
+  const HealthBadge=({h,size="sm"})=>{
+    const col=h>=70?"#22c55e":h>=40?"#f59e0b":"#ef4444";
+    const bg=h>=70?"rgba(34,197,94,0.08)":h>=40?"rgba(245,158,11,0.08)":"rgba(239,68,68,0.08)";
+    const border=h>=70?"rgba(34,197,94,0.2)":h>=40?"rgba(245,158,11,0.2)":"rgba(239,68,68,0.2)";
+    return(<span style={{padding:size==="lg"?"6px 14px":"3px 9px",borderRadius:20,background:bg,border:"1px solid "+border,fontSize:size==="lg"?16:12,fontWeight:700,color:col}}>{h}%</span>);
+  };
+
+  const ScoringPanel=({scores,onCycle})=>{
+    const ALL=leafIds(CATS);
+    const gc=ALL.filter(id=>(scores[id]||"red")==="green").length;
+    const hp=Math.round((gc/ALL.length)*100);
+    return(
+      <div style={{background:"#fff",borderLeft:"1px solid #dde0ea",overflowY:"auto",padding:"18px 16px",width:320,flexShrink:0}}>
+        <div style={{fontSize:11,fontWeight:700,color:NAVY,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Success Map Scoring</div>
+        <div style={{fontSize:11,color:MUTED,marginBottom:14}}>Click any dot to cycle: Red → Yellow → Green</div>
+        <div style={{padding:"12px 16px",background:BG,borderRadius:10,border:"0.5px solid rgba(0,0,0,0.1)",marginBottom:16,display:"flex",alignItems:"baseline",gap:6}}>
+          <span style={{fontSize:32,fontWeight:700,color:NAVY,lineHeight:1}}>{hp}%</span>
+          <span style={{fontSize:12,color:MUTED}}>overall health</span>
+        </div>
+        {CATS.map((cat,ci)=>{
+          const catG=cat.items.filter(i=>pScore(scores,i)==="green").length;
+          const catP=Math.round((catG/cat.items.length)*100);
+          return(<div key={cat.id}>
+            {ci>0&&<div style={{height:1,background:BORDER,margin:"14px 0"}}/>}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,padding:"4px 4px 0"}}>
+              <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.12em"}}>{cat.name}</div>
+              <div style={{fontSize:11,fontWeight:700,color:catP>=70?"#22c55e":catP>=40?"#f59e0b":"#ef4444"}}>{catP}%</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {cat.items.map(item=>{
+              const ps=pScore(scores,item);
+              return(<div key={item.id}>
+                {!item.subs?(
+                  <div onClick={()=>onCycle&&onCycle(item.id)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 10px",borderRadius:8,cursor:onCycle?"pointer":"default",background:"#f4f5f9",transition:"background 0.12s"}} onMouseEnter={e=>{if(onCycle)e.currentTarget.style.background="#eceef4";}} onMouseLeave={e=>e.currentTarget.style.background="#f4f5f9"}>
+                    <span style={{fontSize:13,fontWeight:600,color:TEXT}}>{item.name}</span>
+                    <div className={onCycle?"sd":""} onClick={()=>onCycle&&onCycle(item.id)} style={{width:26,height:26,borderRadius:"50%",background:SC[ps],display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,flexShrink:0,boxShadow:"0 0 8px "+SC[ps]+"55"}}>{ps==="green"?"✓":ps==="yellow"?"~":"!"}</div>
+                  </div>
+                ):(
+                  <div style={{background:"#f4f5f9",borderRadius:8,overflow:"hidden"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:TEXT,padding:"9px 10px 6px 12px"}}>{item.name}</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                      {item.subs.map(sub=>{const ss=scores[sub.id]||"red";return(
+                        <div key={sub.id} onClick={()=>onCycle&&onCycle(sub.id)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px 8px 20px",cursor:onCycle?"pointer":"default",background:"#eceef4",borderTop:"1px solid #e0e2ea",transition:"background 0.12s"}} onMouseEnter={e=>{if(onCycle)e.currentTarget.style.background="#e4e6f0";}} onMouseLeave={e=>e.currentTarget.style.background="#eceef4"}>
+                          <span style={{fontSize:12,color:MUTED}}>{sub.name}</span>
+                          <div className={onCycle?"sd":""} style={{width:22,height:22,borderRadius:"50%",background:SC[ss],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,flexShrink:0,boxShadow:"0 0 6px "+SC[ss]+"44"}}>{ss==="green"?"✓":ss==="yellow"?"~":"!"}</div>
+                        </div>
+                      );})}
+                    </div>
+                  </div>
+                )}
+              </div>);
+            })}
+            </div>
+          </div>);
+        })}
+      </div>
+    );
+  };
+
+  // ── TESTING HELPERS ───────────────────────────────────────────────
+  const RAND_PRACTICES=[
+    {name:"Apex Dental Implants",doctor:"Dr. Nathan Ross",manager:"Carla Simmons",svc:["Full Fixed Arches / All-on-X","Singles / Multiples Implants"],goal:"$180,000/mo",uvp:"Fastest full-arch turnaround in the region — teeth in a day, every time."},
+    {name:"Sunrise Oral & Implant",doctor:"Dr. Priya Sharma",manager:"Tom Reyes",svc:["Singles / Multiples Implants","Cosmetic Smile Makeovers"],goal:"$80,000/mo",uvp:"Board-certified periodontist on staff. We handle every step in-house, no referrals."},
+    {name:"Premier Implant Studio",doctor:"Dr. Carlos Vega",manager:"Lisa Park",svc:["Full Fixed Arches / All-on-X","Overdentures / Implant Retained Dentures"],goal:"$220,000/mo",uvp:"Dual-doctor practice with 1,200+ full arch cases. Lifetime implant warranty."},
+    {name:"Harbor Smile Center",doctor:"Dr. Emily Walsh",manager:"James Liu",svc:["Singles / Multiples Implants","Sleep Apnea","TMJ"],goal:"$95,000/mo",uvp:"Only practice in county offering same-day implants AND sleep apnea treatment under one roof."},
+    {name:"Cascade Dental Group",doctor:"Dr. Marcus Hill",manager:"Sandra Torres",svc:["Full Fixed Arches / All-on-X","Cosmetic Smile Makeovers"],goal:"$150,000/mo",uvp:"Multilingual team (English, Spanish, Mandarin). Saturday appointments always available."},
+  ];
+  const randPct=()=>(Math.floor(Math.random()*60)+10)+"%";
+  const randScore=()=>["red","red","yellow"][Math.floor(Math.random()*3)];
+  const randBetterScore=()=>["yellow","yellow","green"][Math.floor(Math.random()*3)];
+
+  const genRandomClient=()=>{
+    const p=RAND_PRACTICES[Math.floor(Math.random()*RAND_PRACTICES.length)];
+    const suffix=Math.floor(Math.random()*900+100);
+    return{
+      id:"c"+Date.now()+suffix,status:"pending",submittedAt:new Date().toISOString(),
+      answers:{
+        practiceName:p.name+" #"+suffix,doctorName:p.doctor,officeManager:p.manager,
+        services:p.svc,pricing:"Full-fixed: $"+(Math.floor(Math.random()*8+14)*1000)+"/arch\nSingle: $"+(Math.floor(Math.random()*2+3)*1000),
+        monthlyGoal:p.goal,uvp:p.uvp,
+        videoTestimonials:String(Math.floor(Math.random()*15)),
+        beforeAfterPhotos:String(Math.floor(Math.random()*40)),
+        educationalVideos:String(Math.floor(Math.random()*8)),
+        marketingCampaigns:"Google PPC: $"+(Math.floor(Math.random()*5+2)*1000)+"/mo\nFacebook: $"+(Math.floor(Math.random()*3+1)*1000)+"/mo",
+        leadsPerChannel:"Google: "+(Math.floor(Math.random()*30+10))+"/mo\nFacebook: "+(Math.floor(Math.random()*20+5))+"/mo",
+        whoAnswersPhone:["Front desk","Dedicated coordinator","Shared with reception"][Math.floor(Math.random()*3)],
+        bookingRate:randPct(),showRate:randPct(),closeRate:randPct(),
+        financingCompanies:["CareCredit","CareCredit, Lending Club","CareCredit, Proceed Finance"][Math.floor(Math.random()*3)],
+        teamTraining:["None formal","Monthly role-play sessions","Quarterly workshops"][Math.floor(Math.random()*3)],
+        teamAccountability:["Weekly KPI meetings","Monthly reviews","No formal system"][Math.floor(Math.random()*3)],
+        incentives:["Monthly bonus","No incentives currently","Commission on accepted cases"][Math.floor(Math.random()*3)],
+        mainIssues:"Close rate stuck. Need better follow-up system. Marketing spend feels high for leads we get.",
+      },
+      snapshots:[],
+    };
+  };
+
+  const genWithHistory=()=>{
+    const c=genRandomClient();
+    c.status="active";
+    const now=new Date();
+    const numMonths=Math.floor(Math.random()*4)+2;
+    c.snapshots=Array.from({length:numMonths},(_,i)=>{
+      const d=new Date(now);d.setMonth(d.getMonth()-(numMonths-1-i));
+      const label=d.toLocaleString("default",{month:"short",year:"numeric"});
+      const scorer=i<numMonths/2?randScore:randBetterScore;
+      const s={};leafIds(CATS).forEach(id=>{s[id]=scorer();});
+      return{id:"snap"+Date.now()+i+Math.random(),label,date:d.toISOString(),scores:s,notes:i===0?"Initial assessment.":i===numMonths-1?"Latest review — good progress.":"Monthly check-in."};
+    });
+    return c;
+  };
+
+  const testActions=[
+    {label:"Add Pending Onboarding Form",tag:"NEW",desc:"Generates a new practice with filled onboarding form waiting for review",action:()=>{setClients(cs=>[...cs,genRandomClient()]);}},
+    {label:"Add Active Client (with history)",tag:"NEW",desc:"Generates a client with 2–5 months of Success Map data",action:()=>{setClients(cs=>[...cs,genWithHistory()]);}},
+    {label:"Add 3 Pending Forms",tag:"BULK",desc:"Quickly simulates a wave of new onboarding submissions",action:()=>{setClients(cs=>[...cs,genRandomClient(),genRandomClient(),genRandomClient()]);}},
+    {label:"Add 3 Active Clients",tag:"BULK",desc:"Bulk-adds 3 clients with history for a fuller dashboard view",action:()=>{setClients(cs=>[...cs,genWithHistory(),genWithHistory(),genWithHistory()]);}},
+    {label:"Load Full Demo Dataset",tag:"RESET",desc:"Resets to the original 4 sample clients (2 active, 2 pending)",action:()=>{setClients(SAMPLE_CLIENTS);setSelClient(null);setSubview("dashboard");}},
+    {label:"Clear All Clients",tag:"DANGER",desc:"Removes all clients and starts completely fresh",action:()=>{if(window.confirm("Remove all clients?"))setClients([]);}},
+  ];
+
+  const GearModal=()=>(
+    <React.Fragment>
+      <div style={{position:"fixed",bottom:20,left:20,zIndex:90}}>
+        <button onClick={()=>setShowGear(g=>!g)} style={{width:40,height:40,borderRadius:"50%",background:showGear?GOLD:NAVY,border:"none",color:showGear?NAVY:GOLD,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(0,0,0,0.25)",transition:"all 0.2s"}}>&#9881;</button>
+      </div>
+      {showGear&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(10,15,40,0.45)",zIndex:89,display:"flex",alignItems:"flex-end",justifyContent:"flex-start",padding:"0 0 72px 20px"}} onClick={e=>e.target===e.currentTarget&&setShowGear(false)}>
+          <div style={{background:"#fff",borderRadius:14,border:"0.5px solid rgba(0,0,0,0.1)",width:380,boxShadow:"0 -4px 40px rgba(0,0,0,0.15)",overflow:"hidden",maxHeight:"70vh",display:"flex",flexDirection:"column"}}>
+            <div style={{background:NAVY,padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+              <div>
+                <div style={{color:GOLD,fontWeight:700,fontSize:14}}>Testing Mode</div>
+                <div style={{color:"rgba(255,255,255,0.4)",fontSize:11,marginTop:1}}>{clients.length} clients · {clients.filter(c=>c.status==="active").length} active · {clients.filter(c=>c.status==="pending").length} pending</div>
+              </div>
+              <button onClick={()=>setShowGear(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",width:26,height:26,borderRadius:6,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>&times;</button>
+            </div>
+            <div style={{overflowY:"auto",padding:"12px"}}>
+              {testActions.map(({label,tag,desc,action})=>(
+                <button key={label} onClick={()=>{action();setShowGear(false);}} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"11px 14px",marginBottom:5,borderRadius:8,border:"1px solid #ecedf2",background:"#fafbfc",cursor:"pointer",textAlign:"left",transition:"all 0.12s",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}
+                  onMouseEnter={e=>{e.currentTarget.style.background=tag==="DANGER"?"#fff5f5":"#f0f2f8";e.currentTarget.style.borderColor=tag==="DANGER"?"#fca5a5":NAVY;}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="#fafbfc";e.currentTarget.style.borderColor="#ecedf2";}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:tag==="DANGER"?"#ef4444":TEXT}}>{label}</div>
+                    <div style={{fontSize:11,color:MUTED,marginTop:2,lineHeight:1.4}}>{desc}</div>
+                  </div>
+                  <span style={{padding:"2px 7px",borderRadius:4,fontSize:9,fontWeight:700,letterSpacing:"0.08em",flexShrink:0,background:tag==="DANGER"?"rgba(239,68,68,0.08)":tag==="RESET"?"rgba(26,37,88,0.07)":tag==="BULK"?"rgba(59,130,246,0.08)":"rgba(34,197,94,0.08)",color:tag==="DANGER"?"#ef4444":tag==="RESET"?NAVY:tag==="BULK"?"#3b82f6":"#22c55e",border:"1px solid "+(tag==="DANGER"?"rgba(239,68,68,0.2)":tag==="RESET"?"rgba(26,37,88,0.15)":tag==="BULK"?"rgba(59,130,246,0.2)":"rgba(34,197,94,0.2)")}}>{tag}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </React.Fragment>
+  );
+
+  // ── LOGIN ──────────────────────────────────────────────────────────
+  if(view==="login"){
+    return(
+      <div style={{background:BG,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        <Hdr/>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{width:420}}>
+            <div style={{...CARD,padding:"40px 44px"}}>
+              <div style={{textAlign:"center",marginBottom:32}}>
+                <div style={{width:56,height:56,borderRadius:12,background:NAVY,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,margin:"0 auto 16px",color:GOLD,letterSpacing:"0.01em"}}>FA</div>
+                <h1 style={{fontSize:22,fontWeight:700,color:TEXT,marginBottom:6}}>Welcome Back</h1>
+                <p style={{fontSize:13,color:MUTED}}>Sign in to your client dashboard</p>
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block",fontSize:12,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Password</label>
+                <input type="password" value={pw} onChange={e=>{setPw(e.target.value);setPwErr(false);}} onKeyDown={e=>e.key==="Enter"&&(pw===PW?(setView("consultant"),setPw("")):(setPwErr(true),setPw("")))} placeholder="Enter your password" style={INP} autoFocus/>
+              </div>
+              {pwErr&&<div style={{fontSize:12,color:"#ef4444",marginBottom:12}}>Incorrect password. Try again.</div>}
+              <button onClick={()=>pw===PW?(setView("consultant"),setPw("")):(setPwErr(true),setPw(""))} style={{...BTNP,width:"100%",padding:"12px",fontSize:15}}>Sign In →</button>
+              <div style={{textAlign:"center",marginTop:24,paddingTop:20,borderTop:"0.5px solid rgba(0,0,0,0.1)"}}>
+                <p style={{fontSize:12,color:MUTED,marginBottom:8}}>Are you a client?</p>
+                <button onClick={()=>{setView("client-form");setFormStep(0);setFormAns({});}} style={{...BTNS,fontSize:12,padding:"7px 20px"}}>Fill Out Onboarding Form</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── CLIENT FORM ────────────────────────────────────────────────────
+  if(view==="client-form"){
+    const sec=formSecs[formStep];
+    const upd=(id,v)=>setFormAns(a=>({...a,[id]:v}));
+    const toggleCb=(fid,opt)=>{const cur=formAns[fid]||[];upd(fid,cur.includes(opt)?cur.filter(o=>o!==opt):[...cur,opt]);};
+    return(
+      <div style={{background:BG,minHeight:"100vh"}}>
+        <Hdr sub="Client Onboarding" right={<button onClick={()=>setView("login")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Back</button>}/>
+        <div style={{height:4,background:"rgba(255,255,255,0.1)"}}><div style={{height:"100%",width:((formStep+1)/formSecs.length*100)+"%",background:GOLD,transition:"width 0.4s"}}/></div>
+        <div style={{maxWidth:640,margin:"0 auto",padding:"36px 20px 80px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
+            <div style={{display:"flex",gap:4}}>{formSecs.map((_,i)=>(<div key={i} style={{width:i===formStep?16:5,height:5,borderRadius:3,background:i<formStep?GOLD:i===formStep?NAVY:"rgba(0,0,0,0.12)",transition:"all 0.3s"}}/>))}</div>
+            <span style={{fontSize:12,color:MUTED}}>Step {formStep+1} of {formSecs.length}</span>
+          </div>
+          <div style={{...CARD,padding:"32px 36px"}}>
+            <h1 style={{fontSize:20,fontWeight:600,color:TEXT,marginBottom:6}}>{sec.title}</h1>
+            <p style={{fontSize:13,color:MUTED,marginBottom:28}}>{sec.sub}</p>
+            <div style={{display:"flex",flexDirection:"column",gap:20}}>
+              {sec.fields.map(f=>(<div key={f.id}>
+                <label style={{display:"block",fontSize:13,fontWeight:500,color:TEXT,marginBottom:8}}>{f.label}{f.required&&<span style={{color:GOLD}}> *</span>}</label>
+                {f.type==="checkbox"?(
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {(f.options||[]).map(opt=>{const chk=(formAns[f.id]||[]).includes(opt);return(<label key={opt} onClick={()=>toggleCb(f.id,opt)} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"9px 12px",borderRadius:8,border:"0.5px solid "+(chk?NAVY:BORDER),background:chk?"rgba(11,29,94,0.04)":"#fff",transition:"all 0.15s"}}>
+                      <div style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(chk?NAVY:"#c0c6d8"),background:chk?NAVY:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chk&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
+                      <span style={{fontSize:13,color:chk?NAVY:TEXT}}>{opt}</span>
+                    </label>);})}
+                  </div>
+                ):f.type==="textarea"?(
+                  <textarea value={formAns[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder} rows={4} style={{...INP,resize:"vertical",lineHeight:1.6}}/>
+                ):(
+                  <input type="text" value={formAns[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder} style={INP}/>
+                )}
+              </div>))}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:32,paddingTop:24,borderTop:"0.5px solid rgba(0,0,0,0.1)"}}>
+              <button onClick={()=>formStep>0&&setFormStep(s=>s-1)} style={{...BTNS,opacity:formStep===0?0.4:1,cursor:formStep===0?"not-allowed":"pointer"}}>← Back</button>
+              <button onClick={()=>{if(formStep<formSecs.length-1)setFormStep(s=>s+1);else submitClientForm();}} style={BTNP}>{formStep===formSecs.length-1?"Submit →":"Next →"}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(view==="form-confirm"){
+    return(
+      <div style={{background:BG,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        <Hdr/>
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{...CARD,maxWidth:480,textAlign:"center",padding:"48px 40px"}}>
+            <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(34,197,94,0.1)",border:"2px solid #22c55e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:22,color:"#22c55e",fontWeight:700}}>&#10003;</div>
+            <h2 style={{fontSize:22,fontWeight:700,color:TEXT,marginBottom:10}}>Form Submitted!</h2>
+            <p style={{fontSize:14,color:MUTED,lineHeight:1.7,marginBottom:28}}>Thank you. Your onboarding form has been received. Our consultant will review your practice information and reach out shortly to schedule your initial assessment.</p>
+            <button onClick={()=>setView("login")} style={{...BTNS,padding:"10px 28px"}}>← Return to Login</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── CONSULTANT DASHBOARD ───────────────────────────────────────────
+  if(view==="consultant"&&subview==="dashboard"){
+    return(
+      <div style={{background:BG,minHeight:"100vh"}}>
+        <GearModal/>
+        <Hdr sub="Consultant Dashboard — Full-Arch Authority" right={<div style={{display:"flex",gap:8,alignItems:"center"}}><button onClick={()=>window.open("dashboard.html","_blank")} style={{background:"rgba(255,255,255,0.08)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.6)",padding:"5px 12px",borderRadius:6,cursor:"pointer",fontSize:11}}>Dashboard ↗</button>
+          <button onClick={()=>setShowAddClient(true)} style={{...BTNP,padding:"7px 16px",fontSize:13}}>+ Add Client</button>
+          <button onClick={()=>setView("login")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>Sign Out</button>
+        </div>}/>
+        {showAddClient&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(10,15,40,0.5)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&setShowAddClient(false)}>
+            <div style={{background:"#fff",borderRadius:16,border:"0.5px solid rgba(0,0,0,0.1)",width:460,boxShadow:"0 20px 60px rgba(0,0,0,0.15)",overflow:"hidden"}}>
+              <div style={{background:NAVY,padding:"18px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div><div style={{color:GOLD,fontWeight:700,fontSize:15}}>Add New Client</div><div style={{color:"rgba(255,255,255,0.35)",fontSize:11,marginTop:1}}>They will appear as pending until their form is complete</div></div>
+                <button onClick={()=>setShowAddClient(false)} style={{background:"rgba(255,255,255,0.1)",border:"none",color:"#fff",width:28,height:28,borderRadius:6,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>&times;</button>
+              </div>
+              <div style={{padding:"24px"}}>
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {[
+                    {key:"practiceName",label:"Practice Name",placeholder:"e.g. Elite Implant Center",required:true},
+                    {key:"doctorName",label:"Doctor / Owner Name",placeholder:"e.g. Dr. Michael Chen",required:true},
+                    {key:"officeManager",label:"Office Manager",placeholder:"e.g. Sarah Martinez"},
+                    {key:"email",label:"Email Address",placeholder:"e.g. hello@eliteimplant.com"},
+                    {key:"phone",label:"Phone Number",placeholder:"e.g. (555) 123-4567"},
+                  ].map(({key,label,placeholder,required})=>(
+                    <div key={key}>
+                      <label style={{display:"block",fontSize:12,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>{label}{required&&<span style={{color:GOLD}}> *</span>}</label>
+                      <input value={newClient[key]} onChange={e=>setNewClient(n=>({...n,[key]:e.target.value}))} placeholder={placeholder} style={INP}
+                        onKeyDown={e=>e.key==="Enter"&&addClientManually()}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:10,marginTop:24}}>
+                  <button onClick={()=>setShowAddClient(false)} style={{...BTNS,flex:1,padding:"10px",textAlign:"center"}}>Cancel</button>
+                  <button onClick={addClientManually} disabled={!newClient.practiceName.trim()} style={{...BTNP,flex:2,padding:"10px",textAlign:"center",opacity:newClient.practiceName.trim()?1:0.5}}>Add Client &rarr;</button>
+                </div>
+                <div style={{marginTop:14,padding:"10px 14px",background:"rgba(232,160,32,0.06)",borderRadius:8,border:"1px solid rgba(232,160,32,0.15)"}}>
+                  <div style={{fontSize:11,color:"#b07a10",lineHeight:1.6}}><strong>Next step:</strong> After adding, you will be taken to their profile where you can fill in their full onboarding details and start their initial assessment.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div style={{maxWidth:1060,margin:"0 auto",padding:"28px 20px"}}>
+
+          {/* Stats row */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+            {[
+              {label:"Total Clients",n:clients.length,c:NAVY},
+              {label:"Active",n:activeClients.length,c:"#22c55e"},
+              {label:"Pending Review",n:pendingClients.length,c:"#f59e0b"},
+              {label:"Avg Health",n:(activeClients.reduce((a,c)=>{const lat=c.snapshots[c.snapshots.length-1];return a+(lat?health(lat.scores):0);},0)/Math.max(activeClients.length,1)).toFixed(0)+"%",c:"#3b82f6"},
+            ].map(({label,n,c,icon})=>(<div key={label} style={{...CARD,padding:"16px 20px"}}>
+              <div style={{fontSize:20,marginBottom:6}}>{icon}</div>
+              <div style={{fontSize:26,fontWeight:700,color:c,lineHeight:1,marginBottom:3}}>{n}</div>
+              <div style={{fontSize:11,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</div>
+            </div>))}
+          </div>
+
+          {/* Pending onboarding forms */}
+          {pendingClients.length>0&&(
+            <div style={{...CARD,marginBottom:20,border:"1px solid rgba(245,158,11,0.25)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b"}}/>
+                <div style={{fontSize:13,fontWeight:700,color:TEXT}}>Pending Onboarding Forms</div>
+                <div style={{padding:"2px 9px",borderRadius:20,background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.25)",fontSize:11,fontWeight:700,color:"#f59e0b"}}>{pendingClients.length} new</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {pendingClients.map(c=>{
+                  const submitted=new Date(c.submittedAt);
+                  const daysAgo=Math.floor((Date.now()-submitted)/86400000);
+                  return(<div key={c.id} className="row-hover" style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderRadius:10,background:"#fafafa",border:"1px solid #f0f1f5",transition:"background 0.12s"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{width:40,height:40,borderRadius:10,background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#f59e0b",letterSpacing:"0.04em"}}>NEW</div>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:600,color:TEXT}}>{c.answers.practiceName||"Unknown Practice"}</div>
+                        <div style={{fontSize:12,color:MUTED,marginTop:1}}>{c.answers.doctorName} &middot; Submitted {daysAgo===0?"today":daysAgo===1?"yesterday":daysAgo+" days ago"}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{setSelClient(c.id);setSubview("form-review");}} style={{...BTNS,padding:"6px 14px",fontSize:12}}>Review Form</button>
+                      <button onClick={()=>startAssessment(c.id)} style={{...BTNP,padding:"6px 14px",fontSize:12}}>Initial Assessment →</button>
+                    </div>
+                  </div>);
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Active clients */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:TEXT}}>Active Clients</div>
+            <div style={{fontSize:12,color:MUTED}}>{activeClients.length} practice{activeClients.length!==1?"s":""}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+            {activeClients.map(c=>{
+              const snaps=[...c.snapshots].sort((a,b)=>new Date(a.date)-new Date(b.date));
+              const lat=snaps[snaps.length-1];
+              const fst=snaps[0];
+              const latH=lat?health(lat.scores):0;
+              const fstH=fst?health(fst.scores):0;
+              const gain=latH-fstH;
+              return(<div key={c.id} className="client-card" style={{...CARD,cursor:"pointer",transition:"all 0.2s"}} onClick={()=>{setSelClient(c.id);setSubview("client-map");}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12}}>
+                  <div>
+                    <div style={{fontSize:15,fontWeight:700,color:TEXT}}>{c.answers.practiceName}</div>
+                    <div style={{fontSize:12,color:MUTED,marginTop:2}}>{c.answers.doctorName}</div>
+                  </div>
+                  <HealthBadge h={latH}/>
+                </div>
+                {lat&&(<div>
+                  <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",gap:1,marginBottom:10}}>
+                    {CATS.map(cat=>{const g=cat.items.filter(i=>pScore(lat.scores,i)==="green").length;const y=cat.items.filter(i=>pScore(lat.scores,i)==="yellow").length;const r=cat.items.filter(i=>pScore(lat.scores,i)==="red").length;const t=cat.items.length;return(<React.Fragment key={cat.id}>{g>0&&<div style={{flex:g/t,background:"#22c55e",minWidth:2}}/>}{y>0&&<div style={{flex:y/t,background:"#f59e0b",minWidth:2}}/>}{r>0&&<div style={{flex:r/t,background:"#ef4444",minWidth:2}}/>}</React.Fragment>);})}
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:MUTED}}>
+                    <span>{snaps.length} month{snaps.length!==1?"s":""} tracked</span>
+                    {snaps.length>1&&<span style={{color:gain>0?"#22c55e":"#ef4444",fontWeight:600}}>{gain>0?"+":""}{gain}% since start</span>}
+                  </div>
+                </div>)}
+                <div style={{display:"flex",gap:6,marginTop:14,paddingTop:12,borderTop:"1px solid #dde0ea"}}>
+                  <button onClick={e=>{e.stopPropagation();setSelClient(c.id);setSubview("form-review");}} style={{...BTNS,flex:1,padding:"6px",fontSize:11,textAlign:"center"}}>View Form</button>
+                  <button onClick={e=>{e.stopPropagation();setSelClient(c.id);setSubview("client-map");}} style={{...BTNS,flex:1,padding:"6px",fontSize:11,textAlign:"center"}}>Success Map</button>
+                  <button onClick={e=>{e.stopPropagation();startAssessment(c.id,lat?{...lat.scores}:undefined);}} style={{...BTNP,flex:1,padding:"6px",fontSize:11,textAlign:"center"}}>New Month +</button>
+                </div>
+              </div>);
+            })}
+            {activeClients.length===0&&(
+              <div style={{...CARD,textAlign:"center",padding:"40px 24px",gridColumn:"1/-1"}}>
+                
+                <div style={{fontSize:14,color:MUTED}}>No active clients yet. Review pending onboarding forms above to get started.</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── FORM REVIEW ────────────────────────────────────────────────────
+  if(view==="consultant"&&subview==="form-review"&&client){
+    const hasAnswers=Object.keys(client.answers).filter(k=>!["practiceName","doctorName","officeManager","phone","email"].includes(k)&&client.answers[k]).length>0;
+    const updE=(id,v)=>setEditAnswers(a=>({...a,[id]:v}));
+    const toggleCbE=(fid,opt)=>{const cur=editAnswers[fid]||[];updE(fid,cur.includes(opt)?cur.filter(o=>o!==opt):[...cur,opt]);};
+    const sec=formSecs[editStep];
+
+    if(editingForm){
+      return(
+        <div style={{background:BG,minHeight:"100vh"}}>
+          <Hdr sub="Onboarding Form" practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <button onClick={()=>setEditingForm(false)} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Cancel</button>
+            <button onClick={saveFormAnswers} style={{...BTNP,background:GOLD}}>Save Form Answers ✓</button>
+          </div>}/>
+          <div style={{height:4,background:"rgba(255,255,255,0.1)"}}><div style={{height:"100%",width:((editStep+1)/formSecs.length*100)+"%",background:GOLD,transition:"width 0.4s"}}/></div>
+          <div style={{maxWidth:640,margin:"0 auto",padding:"36px 20px 80px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
+              <div style={{display:"flex",gap:4}}>{formSecs.map((_,i)=>(<div key={i} style={{width:i===editStep?16:5,height:5,borderRadius:3,background:i<editStep?"#22c55e":i===editStep?NAVY:"#d0d4e0",transition:"all 0.3s"}}/>))}</div>
+              <span style={{fontSize:12,color:MUTED}}>Step {editStep+1} of {formSecs.length}</span>
+              <span style={{fontSize:11,color:MUTED,marginLeft:"auto"}}>Editing on behalf of client</span>
+            </div>
+            <div style={{...CARD,padding:"32px 36px"}}>
+              <h1 style={{fontSize:20,fontWeight:600,color:TEXT,marginBottom:6}}>{sec.title}</h1>
+              <p style={{fontSize:13,color:MUTED,marginBottom:28}}>{sec.sub}</p>
+              <div style={{display:"flex",flexDirection:"column",gap:20}}>
+                {sec.fields.map(f=>(<div key={f.id}>
+                  <label style={{display:"block",fontSize:13,fontWeight:500,color:TEXT,marginBottom:8}}>{f.label}{f.required&&<span style={{color:GOLD}}> *</span>}</label>
+                  {f.type==="checkbox"?(
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {(f.options||[]).map(opt=>{const chk=(editAnswers[f.id]||[]).includes(opt);return(<label key={opt} onClick={()=>toggleCbE(f.id,opt)} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"9px 12px",borderRadius:8,border:"0.5px solid "+(chk?NAVY:BORDER),background:chk?"rgba(11,29,94,0.04)":"#fff",transition:"all 0.15s"}}>
+                        <div style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(chk?NAVY:"#c0c6d8"),background:chk?NAVY:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chk&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
+                        <span style={{fontSize:13,color:chk?NAVY:TEXT}}>{opt}</span>
+                      </label>);})}
+                    </div>
+                  ):f.type==="textarea"?(
+                    <textarea value={editAnswers[f.id]||""} onChange={e=>updE(f.id,e.target.value)} placeholder={f.placeholder} rows={4} style={{...INP,resize:"vertical",lineHeight:1.6}}/>
+                  ):(
+                    <input type="text" value={editAnswers[f.id]||""} onChange={e=>updE(f.id,e.target.value)} placeholder={f.placeholder} style={INP}/>
+                  )}
+                </div>))}
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:32,paddingTop:24,borderTop:"1px solid #dde0ea"}}>
+                <button onClick={()=>editStep>0&&setEditStep(s=>s-1)} style={{...BTNS,opacity:editStep===0?0.4:1,cursor:editStep===0?"not-allowed":"pointer"}}>← Back</button>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={saveFormAnswers} style={{...BTNS,padding:"9px 18px",borderColor:GOLD,color:GOLD}}>Save &amp; Exit</button>
+                  {editStep<formSecs.length-1?(
+                    <button onClick={()=>setEditStep(s=>s+1)} style={BTNP}>Next →</button>
+                  ):(
+                    <button onClick={saveFormAnswers} style={{...BTNP,background:GOLD}}>Save Form ✓</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return(
+      <div style={{background:BG,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+        <GearModal/>
+        <Hdr sub="Form Review" practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={()=>setSubview("dashboard")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Dashboard</button>
+          <button onClick={()=>startEditForm(client)} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>
+            {hasAnswers?"Edit Form":"Fill Onboarding Form"}
+          </button>
+          <button onClick={()=>startAssessment(selClient,client.snapshots.length>0?{...client.snapshots[client.snapshots.length-1].scores}:undefined)} style={{...BTNP,background:GOLD}}>
+            {client.snapshots.length===0?"Start Initial Assessment →":"New Monthly Assessment →"}
+          </button>
+        </div>}/>
+        <div style={{display:"flex",flex:1,overflow:"hidden",height:"calc(100vh - 56px)"}}>
+          {/* Form answers */}
+          <div style={{flex:1,overflowY:"auto",padding:"24px"}}>
+            <div style={{maxWidth:680}}>
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>
+                  {client.status==="pending"?"Pending Review":"Onboarding Form"}
+                </div>
+                <div style={{fontSize:20,fontWeight:700,color:TEXT}}>{client.answers.practiceName||"Unknown Practice"}</div>
+                <div style={{fontSize:13,color:MUTED,marginTop:2}}>Submitted {new Date(client.submittedAt).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
+              </div>
+
+              {/* Quick analysis card */}
+              <div style={{...CARD,marginBottom:20,borderLeft:"3px solid "+GOLD,background:"rgba(232,160,32,0.02)"}}>
+                <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Quick Analysis</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[
+                    ["Practice",client.answers.practiceName||"—"],
+                    ["Doctor",client.answers.doctorName||"—"],
+                    ["Goal",client.answers.monthlyGoal||"Not specified"],
+                    ["Booking Rate",client.answers.bookingRate||"Unknown"],
+                    ["Show Rate",client.answers.showRate||"Unknown"],
+                    ["Close Rate",client.answers.closeRate||"Unknown"],
+                  ].map(([k,v])=>(<div key={k} style={{padding:"8px 12px",borderRadius:8,background:"#f8f9fc",border:"1px solid #ecedf2"}}>
+                    <div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>{k}</div>
+                    <div style={{fontSize:13,fontWeight:600,color:TEXT}}>{v}</div>
+                  </div>))}
+                </div>
+              </div>
+
+              {formSecs.map(sec=>(<div key={sec.id} style={{...CARD,marginBottom:12}}>
+                <div style={{fontSize:11,fontWeight:700,color:NAVY,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>{sec.title}</div>
+                {sec.fields.map((f,fi)=>{const val=client.answers[f.id];return(
+                  <div key={f.id} style={{marginBottom:fi<sec.fields.length-1?14:0,paddingBottom:fi<sec.fields.length-1?14:0,borderBottom:fi<sec.fields.length-1?"1px solid #dde0ea":"none"}}>
+                    <div style={{fontSize:11,color:MUTED,marginBottom:5}}>{f.label}</div>
+                    {!val||(Array.isArray(val)&&val.length===0)?(<div style={{fontSize:12,color:"#d0d4e0",fontStyle:"italic"}}>Not answered</div>):Array.isArray(val)?(<div style={{display:"flex",flexWrap:"wrap",gap:5}}>{val.map(v=><span key={v} style={{padding:"3px 9px",borderRadius:20,background:"rgba(26,37,88,0.07)",border:"1px solid rgba(26,37,88,0.12)",fontSize:12,color:NAVY,fontWeight:500}}>{v}</span>)}</div>):(<div style={{fontSize:13,color:TEXT,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{val}</div>)}
+                  </div>
+                );})}
+              </div>))}
+              <div style={{height:40}}/>
+            </div>
+          </div>
+          {/* Read-only scoring view if they have snapshots */}
+          {client.snapshots.length>0&&<ScoringPanel scores={client.snapshots[client.snapshots.length-1].scores} onCycle={null}/>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── ASSESSMENT VIEW ────────────────────────────────────────────────
+  if(view==="consultant"&&subview==="assessment"&&client){
+    const ALL=leafIds(CATS);
+    const gc=ALL.filter(id=>(assScores[id]||"red")==="green").length;
+    const yc=ALL.filter(id=>(assScores[id]||"red")==="yellow").length;
+    const rc=ALL.filter(id=>(assScores[id]||"red")==="red").length;
+    const hp=Math.round((gc/ALL.length)*100);
+    const isInitial=client.snapshots.length===0;
+    return(
+      <div style={{background:BG,display:"flex",flexDirection:"column",height:"100vh"}}>
+        <GearModal/>
+        <Hdr sub={(isInitial?"Initial":"Monthly")+" Assessment"} practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={()=>setSubview(isInitial?"form-review":"client-map")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Cancel</button>
+          <button onClick={publishSnapshot} disabled={!assLabel.trim()} style={{...BTNP,background:GOLD,opacity:assLabel.trim()?1:0.5}}>Publish Assessment →</button>
+        </div>}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 320px",flex:1,overflow:"hidden"}}>
+          <div style={{overflowY:"auto",padding:"20px"}}>
+            <div style={{...CARD,marginBottom:16,borderLeft:"3px solid "+GOLD}}>
+              <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Assessment Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                <div>
+                  <label style={{display:"block",fontSize:12,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Month Label</label>
+                  <input value={assLabel} onChange={e=>setAssLabel(e.target.value)} placeholder="e.g. Jun 2025" style={INP}/>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:16,paddingTop:24}}>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:700,color:"#22c55e",lineHeight:1}}>{gc}</div><div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em"}}>Strong</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:700,color:"#f59e0b",lineHeight:1}}>{yc}</div><div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em"}}>In Progress</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:700,color:"#ef4444",lineHeight:1}}>{rc}</div><div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em"}}>Needs Work</div></div>
+                  <div style={{textAlign:"center"}}><div style={{fontSize:28,fontWeight:700,color:NAVY,lineHeight:1}}>{hp}%</div><div style={{fontSize:10,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em"}}>Health</div></div>
+                </div>
+              </div>
+            </div>
+            <div style={CARD}>
+              <div style={{fontSize:11,fontWeight:700,color:NAVY,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>Consultant Notes</div>
+              <p style={{fontSize:12,color:MUTED,marginBottom:10}}>These notes will be visible to the client after publishing.</p>
+              <textarea value={assNotes} onChange={e=>setAssNotes(e.target.value)} placeholder="Add your assessment, priorities, and action plan for this month..." rows={8} style={{...INP,resize:"vertical",lineHeight:1.6}}/>
+            </div>
+            {/* Form answers quick reference */}
+            {isInitial&&(<div style={{...CARD,marginTop:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:NAVY,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>Onboarding Form — Quick Reference</div>
+              {[["Services",(client.answers.services||[]).join(", ")||"—"],["Monthly Goal",client.answers.monthlyGoal||"—"],["Booking Rate",client.answers.bookingRate||"—"],["Show Rate",client.answers.showRate||"—"],["Close Rate",client.answers.closeRate||"—"],["Main Issues",client.answers.mainIssues||"—"]].map(([k,v])=>(<div key={k} style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #dde0ea"}}>
+                <div style={{fontSize:11,color:MUTED,marginBottom:3}}>{k}</div>
+                <div style={{fontSize:13,color:TEXT,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{v}</div>
+              </div>))}
+            </div>)}
+            <div style={{height:40}}/>
+          </div>
+          <ScoringPanel scores={assScores} onCycle={cycleScore}/>
+        </div>
+      </div>
+    );
+  }
+
+  // ── CLIENT SUCCESS MAP ─────────────────────────────────────────────
+  if(view==="consultant"&&subview==="client-map"&&client){
+    const lat=allSnaps.length>0?allSnaps[allSnaps.length-1]:null;
+    const fst=allSnaps.length>0?allSnaps[0]:null;
+    const latH=lat?health(lat.scores):0;
+    const fstH=fst?health(fst.scores):0;
+    const gain=latH-fstH;
+
+    if(selM){
+      const det=allSnaps.find(s=>s.id===selM);
+      if(det){
+        const ds=det.scores;
+        const DL=leafIds(CATS);
+        const dg=DL.filter(id=>(ds[id]||"red")==="green").length;
+        const dy=DL.filter(id=>(ds[id]||"red")==="yellow").length;
+        const dr=DL.filter(id=>(ds[id]||"red")==="red").length;
+        const dh=health(ds);
+        const si=allSnaps.findIndex(s=>s.id===selM);
+        const prev=si>0?allSnaps[si-1]:null;
+        const delta=prev?dh-health(prev.scores):null;
+        const dRed=CATS.flatMap(c=>c.items.filter(i=>pScore(ds,i)==="red").map(i=>({...i,cat:c.name})));
+        return(
+          <div style={{background:BG,minHeight:"100vh"}}>
+            <Hdr sub={det.label} practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button onClick={()=>setSelM(null)} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← All Months</button>
+              <button onClick={()=>startAssessment(selClient,lat?{...lat.scores}:undefined)} style={{...BTNP,background:GOLD,fontSize:12,padding:"7px 14px"}}>+ New Month</button>
+            </div>}/>
+            <div style={{maxWidth:1060,margin:"0 auto",padding:"24px 20px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:20}}>
+                <div><div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:3}}>{det.label} — Monthly Report</div><div style={{fontSize:20,fontWeight:700,color:TEXT}}>{client.answers.practiceName}</div></div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{allSnaps.map(s=>(<button key={s.id} onClick={()=>setSelM(s.id)} style={{padding:"6px 12px",borderRadius:7,border:"1px solid "+(s.id===selM?NAVY:BORDER),background:s.id===selM?NAVY:"#fff",color:s.id===selM?"#fff":TEXT,fontSize:12,cursor:"pointer",fontWeight:s.id===selM?600:400,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>{s.label}</button>))}</div>
+              </div>
+              {det.notes&&(<div style={{...CARD,marginBottom:16,borderLeft:"3px solid "+GOLD}}><div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6}}>Consultant Notes</div><div style={{fontSize:13,color:MUTED,lineHeight:1.75,whiteSpace:"pre-wrap"}}>{det.notes}</div></div>)}
+              <div style={{display:"grid",gridTemplateColumns:"160px 1fr 1fr 1fr",gap:12,marginBottom:16}}>
+                <div style={{...CARD,textAlign:"center",borderTop:"3px solid "+NAVY}}>
+                  <div style={{fontSize:11,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>Health</div>
+                  <div style={{fontSize:38,fontWeight:700,color:NAVY,lineHeight:1}}>{dh}<span style={{fontSize:16}}>%</span></div>
+                  {delta!==null&&<div style={{fontSize:11,marginTop:5,color:delta>=0?"#22c55e":"#ef4444",fontWeight:600,background:delta>=0?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",borderRadius:20,padding:"2px 8px",display:"inline-block"}}>{delta>=0?"↑":"↓"}{Math.abs(delta)}% vs {prev.label}</div>}
+                </div>
+                {[{l:"Strong",n:dg,c:"#22c55e"},{l:"In Progress",n:dy,c:"#f59e0b"},{l:"Needs Work",n:dr,c:"#ef4444"}].map(({l,n,c})=>(<div key={l} style={{...CARD,borderTop:"3px solid "+c}}><div style={{fontSize:11,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{l}</div><div style={{display:"flex",alignItems:"baseline",gap:5}}><span style={{fontSize:34,fontWeight:700,color:c,lineHeight:1}}>{n}</span><span style={{fontSize:12,color:"#c0c6d8"}}>/ {DL.length}</span></div><div style={{marginTop:8,height:3,background:BORDER,borderRadius:2}}><div style={{height:"100%",width:(n/DL.length*100)+"%",background:c,borderRadius:2}}/></div></div>))}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12,marginBottom:16}}>
+                {CATS.map(cat=>{const g=cat.items.filter(i=>pScore(ds,i)==="green").length;const y=cat.items.filter(i=>pScore(ds,i)==="yellow").length;const r=cat.items.filter(i=>pScore(ds,i)==="red").length;const pt=Math.round((g/cat.items.length)*100);const io=exp[cat.id];return(<div key={cat.id} style={CARD}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",userSelect:"none",marginBottom:10}} onClick={()=>setExp(e=>({...e,[cat.id]:!e[cat.id]}))}>
+                    <div style={{fontSize:12,fontWeight:700,color:TEXT,textTransform:"uppercase",letterSpacing:"0.06em"}}>{cat.name}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18,fontWeight:700,color:pt>=70?"#22c55e":pt>=40?"#f59e0b":"#ef4444"}}>{pt}%</span><span style={{color:"#c0c6d8",fontSize:10}}>{io?"▲":"▼"}</span></div>
+                  </div>
+                  <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",gap:1,marginBottom:8}}>{g>0&&<div style={{flex:g,background:"#22c55e",minWidth:3}}/>}{y>0&&<div style={{flex:y,background:"#f59e0b",minWidth:3}}/>}{r>0&&<div style={{flex:r,background:"#ef4444",minWidth:3}}/>}</div>
+                  <div style={{display:"flex",gap:14}}><span style={{fontSize:11,color:"#22c55e",fontWeight:500}}>● {g}</span><span style={{fontSize:11,color:"#f59e0b",fontWeight:500}}>● {y}</span><span style={{fontSize:11,color:"#ef4444",fontWeight:500}}>● {r}</span></div>
+                  {io&&(<div style={{marginTop:12,borderTop:"1px solid #dde0ea",paddingTop:8}}>{cat.items.map(item=>{const s=pScore(ds,item);return(<div key={item.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 4px",borderBottom:"1px solid #dde0ea",borderRadius:4}}><span style={{fontSize:13,color:TEXT}}>{item.name}</span><div style={{width:22,height:22,borderRadius:"50%",background:SC[s],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700}}>{s==="green"?"✓":s==="yellow"?"~":"!"}</div></div>);})}</div>)}
+                </div>);})}
+              </div>
+              {dRed.length>0&&(<div style={{...CARD,border:"1px solid #fca5a5",marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#ef4444",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>● Priority Focus — {dRed.length} areas need attention</div>
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {CATS.map(cat=>{const cr=cat.items.filter(i=>pScore(ds,i)==="red");if(!cr.length)return null;return(<div key={cat.id}><div style={{fontSize:10,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:8}}>{cat.name} <span style={{color:"#ef4444"}}>({cr.length})</span></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:6}}>{cr.map(item=>(<div key={item.id} style={{padding:"9px 12px",borderRadius:8,background:"#fff5f5",border:"1px solid #fecaca"}}><div style={{fontSize:13,fontWeight:600,color:TEXT}}>{item.name}</div></div>))}</div></div>);})}
+                </div>
+              </div>)}
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // Client map overview (table + timeline)
+    const TableView=()=>(
+      <div style={{...CARD,padding:0,overflow:"hidden"}}>
+        {is1yr&&(<div style={{padding:"8px 16px",background:"#f0f2f8",borderBottom:"0.5px solid #dde0ea",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:NAVY,fontWeight:600}}><span>←</span><span>Scroll left to see earlier months</span></div>
+          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:MUTED}}>
+            <span style={{padding:"2px 8px",borderRadius:20,background:"rgba(26,37,88,0.08)",fontSize:10,fontWeight:600,color:NAVY}}>{allSnaps[0]?.label}</span>
+            <span>→</span>
+            <span style={{padding:"2px 8px",borderRadius:20,background:NAVY,fontSize:10,fontWeight:600,color:"#fff"}}>{allSnaps[allSnaps.length-1]?.label} (now)</span>
+          </div>
+        </div>)}
+        <div ref={is1yr?scrollRef:null} style={{overflowX:"auto"}}>
+          <table style={{borderCollapse:"collapse",fontSize:13,width:"100%",tableLayout:"fixed"}}>
+            <colgroup><col style={{width:"200px",minWidth:"200px"}}/>{vis.map(s=><col key={s.id} style={{width:"110px",minWidth:"110px"}}/>)}</colgroup>
+            <thead>
+              <tr>
+                <th style={{background:NAVY,color:"#fff",padding:"10px 16px",textAlign:"left",fontWeight:600,fontSize:12,position:"sticky",left:0,zIndex:3,boxShadow:"2px 0 6px rgba(0,0,0,0.12)"}}>Area</th>
+                {vis.map(snap=>{const h=health(snap.scores);const idx=allSnaps.findIndex(s=>s.id===snap.id);const prev=idx>0?health(allSnaps[idx-1].scores):null;const d=prev!==null?h-prev:null;const isLat=snap.id===allSnaps[allSnaps.length-1]?.id;return(<th key={snap.id} onClick={()=>setSelM(snap.id)} style={{background:isLat?"#0f1a40":NAVY,color:"#fff",padding:"10px 8px",textAlign:"center",fontWeight:600,fontSize:12,cursor:"pointer",borderLeft:"1px solid rgba(255,255,255,0.1)"}} onMouseEnter={e=>e.currentTarget.style.background="#253070"} onMouseLeave={e=>e.currentTarget.style.background=isLat?"#0f1a40":NAVY}>
+                  <div>{snap.label}{isLat&&<span style={{marginLeft:4,fontSize:9,background:"rgba(255,255,255,0.18)",padding:"1px 5px",borderRadius:3}}>NOW</span>}</div>
+                  {d!==null&&<div style={{fontSize:10,fontWeight:700,color:d>0?"#86efac":d<0?"#fca5a5":"rgba(255,255,255,0.4)",marginTop:2}}>{d>0?"+":""}{d}%</div>}
+                </th>);})}
+              </tr>
+            </thead>
+            <tbody>
+              {CATS.map((cat,ci)=>(<React.Fragment key={cat.id}>
+                <tr><td style={{background:"#f4f5f9",padding:"6px 16px",fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",borderTop:ci>0?"2px solid #dde0ea":"none",position:"sticky",left:0,zIndex:2,boxShadow:"2px 0 6px rgba(0,0,0,0.06)"}}>{cat.name}</td>{vis.map(s=><td key={s.id} style={{background:"#f4f5f9",borderTop:ci>0?"2px solid #dde0ea":"none",borderLeft:"0.5px solid #ecedf2"}}/>)}</tr>
+                {cat.items.map((item,ii)=>(<tr key={item.id} style={{background:ii%2===0?"#fff":"#fafafa"}}>
+                  <td style={{padding:"8px 16px 8px 24px",color:MUTED,fontSize:12,borderBottom:"0.5px solid #ecedf2",position:"sticky",left:0,zIndex:2,background:ii%2===0?"#fff":"#fafafa",boxShadow:"2px 0 6px rgba(0,0,0,0.06)"}}>{item.name}</td>
+                  {vis.map(snap=>{const s=pScore(snap.scores,item);return(<td key={snap.id} onClick={()=>setSelM(snap.id)} style={{textAlign:"center",padding:"8px",borderBottom:"0.5px solid #ecedf2",borderLeft:"0.5px solid #ecedf2",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#f0f1f8"} onMouseLeave={e=>e.currentTarget.style.background=ii%2===0?"#fff":"#fafafa"}>
+                    <div style={{width:24,height:24,borderRadius:"50%",background:SC[s],display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700}}>{s==="green"?"✓":s==="yellow"?"~":"!"}</div>
+                  </td>);})}
+                </tr>))}
+              </React.Fragment>))}
+              <tr style={{background:"#f4f5f9",borderTop:"2px solid #dde0ea"}}>
+                <td style={{padding:"10px 16px",fontSize:12,fontWeight:700,color:TEXT,position:"sticky",left:0,zIndex:2,background:"#f4f5f9",boxShadow:"2px 0 6px rgba(0,0,0,0.06)"}}>Overall Health</td>
+                {vis.map(snap=>{const h=health(snap.scores);return(<td key={snap.id} onClick={()=>setSelM(snap.id)} style={{textAlign:"center",padding:"10px 8px",borderLeft:"0.5px solid #dde0ea",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#ecedf2"} onMouseLeave={e=>e.currentTarget.style.background="#f4f5f9"}>
+                  <span style={{fontSize:17,fontWeight:700,color:h>=70?"#22c55e":h>=40?"#f59e0b":"#ef4444"}}>{h}%</span>
+                </td>);})}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{padding:"10px 16px",display:"flex",gap:16,alignItems:"center",borderTop:"0.5px solid #dde0ea"}}>
+          <span style={{fontSize:11,color:MUTED}}>Legend:</span>
+          {[["#22c55e","✓","Strong"],["#f59e0b","~","In Progress"],["#ef4444","!","Needs Work"]].map(([c,s,l])=>(<span key={l} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:c}}><span style={{width:16,height:16,borderRadius:"50%",background:c,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700}}>{s}</span>{l}</span>))}
+          <span style={{fontSize:11,color:MUTED,marginLeft:"auto"}}>Click any column to open full report</span>
+        </div>
+      </div>
+    );
+
+    const TimelineView=()=>{
+      const n=vis.length;const padL=40,padR=20,padT=30,padB=32,H=180;
+      const W=is1yr?Math.max(600,n*110+padL+padR):600;
+      const heights=vis.map(s=>health(s.scores));
+      const xPos=(i)=>padL+(i/(Math.max(n-1,1)))*(W-padL-padR);
+      const yPos=(h)=>padT+(H-padT-padB)*(1-h/100);
+      const pts=heights.map((h,i)=>({x:xPos(i),y:yPos(h),h}));
+      const polyline=pts.map(p=>p.x+","+p.y).join(" ");
+      const area="M"+pts[0].x+","+yPos(0)+" "+pts.map(p=>"L"+p.x+","+p.y).join(" ")+" L"+pts[pts.length-1].x+","+yPos(0)+" Z";
+      return(<React.Fragment>
+        <div style={{...CARD,marginBottom:12,padding:"20px 24px"}}>
+          <div style={{fontSize:12,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:16}}>Health Score Over Time</div>
+          <div ref={is1yr?scrollRef:null} style={{overflowX:is1yr?"auto":"visible"}}>
+            <svg viewBox={"0 0 "+W+" "+H} style={{width:is1yr?W+"px":"100%",minWidth:"100%",display:"block",overflow:"visible"}}>
+              {[25,50,75,100].map(g=>(<React.Fragment key={g}><line x1={padL} y1={yPos(g)} x2={W-padR} y2={yPos(g)} stroke="#ecedf2" strokeWidth="1"/><text x={padL-6} y={yPos(g)+4} textAnchor="end" fill="#c0c6d8" fontSize="10">{g}%</text></React.Fragment>))}
+              <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1a2558" stopOpacity="0.08"/><stop offset="100%" stopColor="#1a2558" stopOpacity="0"/></linearGradient></defs>
+              <path d={area} fill="url(#lg)"/>
+              <polyline points={polyline} fill="none" stroke="#1a2558" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+              {pts.map((p,i)=>{const col=p.h>=70?"#22c55e":p.h>=40?"#f59e0b":"#ef4444";const idx=allSnaps.findIndex(s=>s.id===vis[i].id);const prev=idx>0?health(allSnaps[idx-1].scores):null;const d=prev!==null?p.h-prev:null;return(<g key={i} style={{cursor:"pointer"}} onClick={()=>setSelM(vis[i].id)}>
+                <circle cx={p.x} cy={p.y} r="14" fill="transparent"/>
+                <circle cx={p.x} cy={p.y} r="5" fill={col} stroke="#fff" strokeWidth="2"/>
+                <text x={p.x} y={p.y-12} textAnchor="middle" fill={col} fontSize="11" fontWeight="700">{p.h}%</text>
+                {d!==null&&<text x={p.x} y={p.y-24} textAnchor="middle" fill={d>0?"#22c55e":d<0?"#ef4444":"#c0c6d8"} fontSize="10" fontWeight="600">{d>0?"+":""}{d}%</text>}
+                <text x={p.x} y={H-4} textAnchor="middle" fill={MUTED} fontSize="11">{vis[i].label}</text>
+              </g>);})}
+            </svg>
+          </div>
+        </div>
+        <div style={{...CARD,padding:"20px 24px"}}>
+          <div style={{fontSize:12,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:14}}>By pillar — {lat?lat.label:"latest"}</div>
+          {lat&&CATS.map(cat=>{const g=cat.items.filter(i=>pScore(lat.scores,i)==="green").length;const pt=Math.round((g/cat.items.length)*100);const fg=fst?cat.items.filter(i=>pScore(fst.scores,i)==="green").length:0;const fpt=fst?Math.round((fg/cat.items.length)*100):0;return(<div key={cat.id} style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+            <span style={{fontSize:12,color:MUTED,width:170,flexShrink:0}}>{cat.name}</span>
+            <div style={{flex:1,height:8,background:"#ecedf2",borderRadius:4,overflow:"hidden",position:"relative"}}>
+              {fst&&<div style={{position:"absolute",top:0,left:0,height:"100%",width:fpt+"%",background:"#dde0ea",borderRadius:4}}/>}
+              <div style={{position:"absolute",top:0,left:0,height:"100%",width:pt+"%",background:pt>=70?"#22c55e":pt>=40?"#f59e0b":"#ef4444",borderRadius:4}}/>
+            </div>
+            <span style={{fontSize:12,fontWeight:700,color:pt>=70?"#22c55e":pt>=40?"#f59e0b":"#ef4444",width:36,textAlign:"right"}}>{pt}%</span>
+            {fst&&pt!==fpt&&<span style={{fontSize:11,color:pt>fpt?"#22c55e":"#ef4444",fontWeight:600,width:36}}>{pt>fpt?"+":""}{pt-fpt}%</span>}
+          </div>);})}
+        </div>
+      </React.Fragment>);
+    };
+
+    return(
+      <div style={{background:BG,minHeight:"100vh"}}>
+        <GearModal/>
+        <Hdr sub="Success Map" practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={()=>{setSelM(null);setSubview("dashboard");}} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Dashboard</button>
+          <button onClick={()=>setSubview("form-review")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>View Form</button>
+          <button onClick={()=>startAssessment(selClient,lat?{...lat.scores}:undefined)} style={{...BTNP,background:GOLD,fontSize:12,padding:"7px 16px"}}>+ New Month Assessment</button>
+        </div>}/>
+        <div style={{maxWidth:1060,margin:"0 auto",padding:"24px 20px"}}>
+          {/* Summary card */}
+          <div style={{...CARD,marginBottom:16,borderLeft:"3px solid "+GOLD}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Growth Dashboard</div>
+                <div style={{fontSize:20,fontWeight:700,color:TEXT}}>{client.answers.practiceName}</div>
+                <div style={{fontSize:13,color:MUTED,marginTop:2}}>{allSnaps.length} month{allSnaps.length!==1?"s":""} tracked{fst&&lat?" · "+fst.label+" → "+lat.label:""}</div>
+              </div>
+              {allSnaps.length>1&&(<div style={{display:"flex",gap:20,alignItems:"center"}}>
+                <div style={{textAlign:"center"}}><div style={{fontSize:11,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Started</div><div style={{fontSize:28,fontWeight:700,color:"#ef4444"}}>{fstH}%</div><div style={{fontSize:11,color:MUTED}}>{fst.label}</div></div>
+                <div style={{fontSize:24,color:"#d0d4e0"}}>→</div>
+                <div style={{textAlign:"center"}}><div style={{fontSize:11,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Now</div><div style={{fontSize:28,fontWeight:700,color:"#22c55e"}}>{latH}%</div><div style={{fontSize:11,color:MUTED}}>{lat.label}</div></div>
+                <div style={{textAlign:"center",padding:"10px 20px",borderRadius:10,background:gain>=0?"rgba(34,197,94,0.08)":"rgba(239,68,68,0.08)",border:"1px solid "+(gain>=0?"rgba(34,197,94,0.25)":"rgba(239,68,68,0.25)")}}>
+                  <div style={{fontSize:11,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Total Growth</div>
+                  <div style={{fontSize:28,fontWeight:700,color:gain>=0?"#22c55e":"#ef4444"}}>{gain>=0?"+":""}{gain}%</div>
+                </div>
+              </div>)}
+              {allSnaps.length===0&&<div style={{fontSize:13,color:MUTED,fontStyle:"italic"}}>No assessments yet — click "New Month Assessment" to get started</div>}
+            </div>
+          </div>
+
+          {allSnaps.length===0?(
+            <div style={{...CARD,textAlign:"center",padding:"60px 24px"}}>
+              <div style={{width:48,height:48,borderRadius:12,background:"rgba(26,37,88,0.06)",border:"0.5px solid rgba(0,0,0,0.1)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}><span style={{fontSize:20,color:MUTED}}>&#9638;</span></div>
+              <div style={{fontSize:16,fontWeight:600,color:TEXT,marginBottom:8}}>No assessments yet</div>
+              <div style={{fontSize:13,color:MUTED,marginBottom:20}}>Click "New Month Assessment" to score this client's first Success Map.</div>
+              <button onClick={()=>startAssessment(selClient)} style={BTNP}>Start Initial Assessment →</button>
+            </div>
+          ):(
+            <React.Fragment>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8}}>
+                <div style={{display:"flex",background:"#fff",border:"0.5px solid rgba(0,0,0,0.1)",borderRadius:8,padding:3,gap:2}}>
+                  {[["table","Table View"],["timeline","Timeline View"]].map(([v,l])=>(<button key={v} onClick={()=>setDv(v)} style={{padding:"5px 16px",borderRadius:6,border:"none",cursor:"pointer",background:dv===v?NAVY:"transparent",color:dv===v?"#fff":MUTED,fontSize:12,fontWeight:dv===v?600:400,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>{l}</button>))}
+                </div>
+                <div style={{display:"flex",background:"#fff",border:"0.5px solid rgba(0,0,0,0.1)",borderRadius:8,padding:3,gap:2}}>
+                  {[["3mo","3 Mo"],["6mo","6 Mo"],["1yr","1 Yr"],["month","All"]].map(([v,l])=>(<button key={v} onClick={()=>setTr(v)} style={{padding:"5px 12px",borderRadius:6,border:"none",cursor:"pointer",background:tr===v?NAVY:"transparent",color:tr===v?"#fff":MUTED,fontSize:12,fontWeight:tr===v?600:400,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>{l}</button>))}
+                </div>
+              </div>
+              {dv==="table"?<TableView/>:<TimelineView/>}
+            </React.Fragment>
+          )}
+          <div style={{textAlign:"center",marginTop:16,marginBottom:24,fontSize:12,color:"#c0c6d8"}}>Full-Arch Authority</div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
