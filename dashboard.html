@@ -189,6 +189,7 @@ const DEFAULT_FIELDS=[
   {key:'doctor',label:'Doctor / primary contact',type:'text',placeholder:'Dr. Jane Smith'},
   {key:'staff',label:'Staff / team contacts',type:'text',placeholder:'Office manager, coordinator...'},
   {key:'timezone',label:'Time zone',type:'timezone',placeholder:''},
+  {key:'website',label:'Website',type:'text',placeholder:'https://www.example.com'},
   {key:'numLocations',label:'No. of locations',type:'text',placeholder:'e.g. 1'},
   {key:'locations',label:'Practice location names',type:'textarea',placeholder:'e.g. Main Office, North Branch'},
   {key:'notes',label:'Notes',type:'textarea',placeholder:'Any other info...'},
@@ -196,9 +197,100 @@ const DEFAULT_FIELDS=[
 
 
 
-function showHiddenTooltip(e){
+function addClientNote(clientId){
+  const el=document.getElementById('cnote-new');
+  if(!el)return;
+  const text=el.value.trim();
+  if(!text)return;
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  if(!Array.isArray(c.notesLog)) c.notesLog=[];
+  c.notesLog.push({date:fmtDate(),text,edited:false});
+  save();openDetail(clientId);
+}
+
+function startEditClientNote(clientId,noteIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!Array.isArray(c.notesLog))return;
+  const entry=c.notesLog[noteIdx];
+  if(!entry)return;
+  const actionsEl=document.getElementById('cnote-actions-'+noteIdx);
+  if(!actionsEl)return;
+  const orig=actionsEl.innerHTML;
+  actionsEl.innerHTML=`<textarea id="cnote-edit-${noteIdx}" rows="2" style="width:100%;padding:6px 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);resize:vertical;margin-bottom:6px;">${esc(entry.text)}</textarea>
+    <div style="display:flex;gap:6px;">
+      <button onclick="cancelEditClientNote(${clientId},${noteIdx})" style="height:28px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);">Cancel</button>
+      <button onclick="saveClientNoteEdit(${clientId},${noteIdx})" style="height:28px;padding:0 10px;border:none;border-radius:4px;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);">Save</button>
+    </div>`;
+  actionsEl._origHtml=orig;
+  setTimeout(()=>{const t=document.getElementById('cnote-edit-'+noteIdx);if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length);}},50);
+}
+
+function cancelEditClientNote(clientId,noteIdx){
+  const el=document.getElementById('cnote-actions-'+noteIdx);
+  if(el&&el._origHtml) el.innerHTML=el._origHtml;
+}
+
+function saveClientNoteEdit(clientId,noteIdx){
+  const ta=document.getElementById('cnote-edit-'+noteIdx);
+  if(!ta)return;
+  const newText=ta.value.trim();
+  if(!newText)return;
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!Array.isArray(c.notesLog))return;
+  const entry=c.notesLog[noteIdx];
+  if(!entry)return;
+  if(!Array.isArray(entry.history)) entry.history=[];
+  entry.history.push({text:entry.text,date:entry.date});
+  entry.originalDate=entry.originalDate||entry.date;
+  entry.text=newText;
+  entry.editedAt=fmtDate();
+  entry.edited=true;
+  save();openDetail(clientId);
+}
+
+function viewClientNoteHistory(clientId,noteIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!Array.isArray(c.notesLog))return;
+  const entry=c.notesLog[noteIdx];
+  if(!entry||!Array.isArray(entry.history))return;
+  const rows=[...entry.history].reverse().map((h,i)=>`
+    <div style="padding:8px 0;border-bottom:0.5px solid var(--border-light);">
+      <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:3px;">${esc(h.date)}</div>
+      <div style="font-size:13px;color:var(--text-primary);line-height:1.5;">${esc(h.text)}</div>
+    </div>`).join('');
+  showModal(`
+    <h3>Edit history</h3>
+    <div style="max-height:320px;overflow-y:auto;margin-top:10px;">${rows}</div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+    </div>`);
+}
+
+function inlineDeleteClientNote(clientId,noteIdx){
+  const row=document.getElementById('cnote-actions-'+noteIdx);
+  if(!row)return;
+  const orig=row.innerHTML;
+  row.style.background='var(--bg-secondary)';
+  row.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+    <span style="flex:1;font-size:12px;color:var(--text-primary);">Delete this note?</span>
+    <button type="button" onclick="this.closest('[id^=cnote-actions]').innerHTML=this._o;this.closest('[id^=cnote-actions]').style.background=''" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    <button type="button" onclick="doDeleteClientNote(${clientId},${noteIdx})" style="height:22px;padding:0 8px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);">Delete</button>
+  </div>`;
+  row.querySelector('button')._o=orig;
+}
+
+function doDeleteClientNote(clientId,noteIdx){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!Array.isArray(c.notesLog))return;
+  c.notesLog.splice(noteIdx,1);
+  save();openDetail(clientId);
+}
+
+function showHiddenTooltip(e,text){
   let t=document.getElementById('hidden-tooltip-global');
-  if(!t){t=document.createElement('div');t.id='hidden-tooltip-global';t.textContent='Hidden from client mode';document.body.appendChild(t);}
+  if(!t){t=document.createElement('div');t.id='hidden-tooltip-global';document.body.appendChild(t);}
+  t.textContent=text||'Hidden from client mode';
   t.style.display='block';
   const r=e.currentTarget.getBoundingClientRect();
   const tw=t.offsetWidth;
@@ -240,7 +332,7 @@ let _syncTimer=null;
 let S=JSON.parse(localStorage.getItem('gmj_dashboard')||'null')||JSON.parse(JSON.stringify(DEFAULTS));
 migrateData();
 save();
-let view='clients',filter='all',detailId=null,editMode=false,clientMode=false,clientModeId=null,accountingMode=false;
+let view='clients',filter='all',detailId=null,editMode=false,clientMode=false,clientModeId=null,accountingMode=false,reorderClientId=null;
 const activePractice={};
 
 function save(){
@@ -466,19 +558,37 @@ function renderClients(){
       practiceColorMap[p]=storedColors[p]||PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
     });
 
+    const isReordering=reorderClientId===c.id;
+    const reorderBar=isReordering&&editMode&&!clientMode?`<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px;background:rgba(11,29,94,0.05);border-radius:6px;border:0.5px solid rgba(11,29,94,0.15);margin-bottom:8px;" onclick="event.stopPropagation()">
+      <span style="font-size:11px;color:#0b1d5e;font-weight:500;">Drag to reorder</span>
+      <div style="display:flex;gap:4px;">
+        <button onclick="event.stopPropagation();reorderClientId=null;render()" style="height:24px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+        <button onclick="event.stopPropagation();saveFileOrder(${c.id},false)" style="height:24px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">This client</button>
+        <button onclick="event.stopPropagation();saveFileOrder(${c.id},true)" style="height:24px;padding:0 8px;border:none;border-radius:4px;background:#0b1d5e;color:#bc9762;font-size:11px;cursor:pointer;font-family:var(--font);">All clients</button>
+      </div>
+    </div>`:'';
+
     let chips=visibleLinks.map(l=>{
       const cat=l.category;
       const globalHidden=Array.isArray(S.hiddenCategories)&&S.hiddenCategories.includes(cat);
       const override=c.categoryOverrides&&c.categoryOverrides[cat];
       const isHidden=(globalHidden&&override!=='show')||(!globalHidden&&override==='hidden');
-      const hiddenIcon=isHidden&&!clientMode?`<span class="hidden-icon-wrap" onclick="event.stopPropagation()" onmouseenter="showHiddenTooltip(event)" onmouseleave="hideHiddenTooltip()">
+      const hiddenIcon=isHidden&&!clientMode?`<span class="hidden-icon-wrap" onclick="event.stopPropagation()" onmouseenter="showHiddenTooltip(event,'Hidden from client mode')" onmouseleave="hideHiddenTooltip()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="opacity:0.4;" stroke="var(--text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
           <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
           <line x1="1" y1="1" x2="23" y2="23"/>
         </svg>
       </span>`:'';
-      return`<div class="link-chip" data-link-id="${l.id}"  onclick="event.stopPropagation();if(event.target.closest('.icon-btn')||event.target.closest('.hidden-icon-wrap'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;" title="${l.url?esc(l.url):'No URL yet — click to add'}">
+      if(isReordering){
+        return`<div class="link-chip" data-link-id="${l.id}" draggable="true" style="cursor:grab;" onclick="event.stopPropagation()">
+          <span style="color:var(--text-tertiary);font-size:13px;padding:0 2px;user-select:none;flex-shrink:0;">⠿</span>
+          <svg style="width:13px;height:13px;flex-shrink:0;opacity:0.4;" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
+          <span class="chip-label">${esc(l.label)}</span>
+          ${hasMultiple&&l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:10px;color:${pc.txt};background:${pc.bg};border-radius:3px;padding:1px 6px;flex-shrink:0;white-space:nowrap;font-weight:500;">${esc(l.practice)}</span>`;})():''}
+        </div>`;
+      }
+      return`<div class="link-chip" data-link-id="${l.id}" onclick="event.stopPropagation();if(event.target.closest('.icon-btn')||event.target.closest('.hidden-icon-wrap'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;" title="${l.url?esc(l.url):'No URL yet — click to add'}">
         <svg style="width:13px;height:13px;flex-shrink:0;opacity:${l.url?'0.5':'0.25'};" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
         <span class="chip-label" style="color:${l.url?'var(--text-primary)':'var(--text-tertiary)'};">${esc(l.label)}</span>
         ${hasMultiple&&l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:10px;color:${pc.txt};background:${pc.bg};border-radius:3px;padding:1px 6px;flex-shrink:0;white-space:nowrap;font-weight:500;">${esc(l.practice)}</span>`;})():''}
@@ -543,9 +653,13 @@ function renderClients(){
           ${metaLine}
         </div>
         ${clientMode?'':` <button class="icon-btn" onclick="event.stopPropagation();openClientModal(${c.id})" title="Edit" style="transform:scaleX(-1);">✎</button>`}
+        ${editMode&&!clientMode&&links.length>1?`<button class="icon-btn" onclick="event.stopPropagation();reorderClientId=${isReordering?'null':c.id};render()" title="Reorder files" style="${isReordering?'color:var(--accent);':''}" >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>`:''}
       </div>
       <div style="display:flex;flex-direction:column;gap:5px;">
         ${tabBar}
+        ${reorderBar}
         ${chipsWrapper||'<div style="font-size:12px;color:var(--text-tertiary);font-style:italic;padding:2px 0;">No files yet</div>'}
         ${editMode&&!clientMode?`<button class="add-row" onclick="event.stopPropagation();openLinkModal(null,${c.id})"><span style="font-size:15px;line-height:1;">+</span>&nbsp;Add link</button>`:''}
         ${paymentRow}
@@ -554,6 +668,66 @@ function renderClients(){
   });
   html+='</div>';
   document.getElementById('main').innerHTML=html;
+  if(reorderClientId) initReorderDrag(reorderClientId);
+}
+
+function initReorderDrag(clientId){
+  const container=document.getElementById('chips-'+clientId);
+  if(!container)return;
+  let dragEl=null,didDrag=false;
+  container.querySelectorAll('.link-chip[draggable]').forEach(chip=>{
+    chip.addEventListener('dragstart',e=>{dragEl=chip;didDrag=false;setTimeout(()=>chip.style.opacity='0.4',0);});
+    chip.addEventListener('drag',()=>{didDrag=true;});
+    chip.addEventListener('dragend',()=>{
+      chip.style.opacity='1';
+      container.querySelectorAll('.link-chip').forEach(c=>c.style.borderTop='');
+      dragEl=null;didDrag=false;
+    });
+    chip.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(!dragEl||dragEl===chip)return;
+      const rect=chip.getBoundingClientRect();
+      container.querySelectorAll('.link-chip').forEach(c=>c.style.borderTop='');
+      if(e.clientY<rect.top+rect.height/2) chip.style.borderTop='2px solid var(--accent)';
+    });
+    chip.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(!dragEl||dragEl===chip)return;
+      const rect=chip.getBoundingClientRect();
+      if(e.clientY<rect.top+rect.height/2) container.insertBefore(dragEl,chip);
+      else container.insertBefore(dragEl,chip.nextSibling);
+      container.querySelectorAll('.link-chip').forEach(c=>c.style.borderTop='');
+    });
+  });
+}
+
+function saveFileOrder(clientId,forAll){
+  const container=document.getElementById('chips-'+clientId);
+  if(!container)return;
+  const orderedIds=[...container.querySelectorAll('.link-chip[data-link-id]')].map(c=>parseInt(c.dataset.linkId));
+  const clientLinks=S.links.filter(l=>l.clientId===clientId);
+  const otherLinks=S.links.filter(l=>l.clientId!==clientId);
+  const reordered=orderedIds.map(id=>clientLinks.find(l=>l.id===id)).filter(Boolean);
+  const remaining=clientLinks.filter(l=>!orderedIds.includes(l.id));
+  const newOrder=[...reordered,...remaining];
+  if(forAll){
+    // Apply same category order to all clients
+    const catOrder=newOrder.map(l=>l.category);
+    S.clients.forEach(cl=>{
+      const clLinks=S.links.filter(l=>l.clientId===cl.id);
+      const sorted=[...clLinks].sort((a,b)=>{
+        const ai=catOrder.indexOf(a.category);
+        const bi=catOrder.indexOf(b.category);
+        return(ai===-1?999:ai)-(bi===-1?999:bi);
+      });
+      S.links=S.links.filter(l=>l.clientId!==cl.id).concat(sorted);
+    });
+  } else {
+    S.links=[...otherLinks,...newOrder];
+  }
+  reorderClientId=null;
+  save();render();
+  showToast(forAll?'File order saved for all clients':'File order saved');
 }
 
 function renderCategory(){
@@ -647,8 +821,8 @@ function renderDetail(app){
 
   const CLIENT_MODE_FIELDS=['doctor','timezone','numLocations','locations'];
   const fields=clientMode
-    ?(S.fields||DEFAULT_FIELDS).filter(f=>CLIENT_MODE_FIELDS.includes(f.key))
-    :S.fields||DEFAULT_FIELDS;
+    ?getClientFields(c.id).filter(f=>CLIENT_MODE_FIELDS.includes(f.key))
+    :getClientFields(c.id);
   const fieldCards=fields.map(f=>{
     const v=inf[f.key];
     const span=(f.type==='textarea'||f.key==='notes'||f.key==='locations')?'grid-column:1/-1;':'';
@@ -670,11 +844,35 @@ function renderDetail(app){
         </div>`:'<span class="muted">—</span>';
       return`<div class="detail-card" style="grid-column:1/-1;"><div class="detail-card-title">${esc(f.label)}</div><div class="detail-card-val">${staffHtml}</div></div>`;
     }
+    if(f.key==='notes'){
+      const notesLog=Array.isArray(c.notesLog)?c.notesLog:[];
+      const showHistory=!S.adminSettings||S.adminSettings.showEditHistory!==false;
+      const noteEntries=notesLog.map((entry,origIdx)=>{
+        const showThisHistory=showHistory&&entry.edited&&!entry.hideHistory;
+        const displayDate=showThisHistory&&entry.editedAt
+          ?`${esc(entry.originalDate||entry.date)} · edited ${esc(entry.editedAt)}`
+          :esc(entry.date);
+        return`<div style="border-bottom:0.5px solid var(--border-light);padding:8px 0;" id="cnote-actions-${origIdx}">
+          <div style="font-size:13px;color:var(--text-primary);line-height:1.6;margin-bottom:4px;">${esc(entry.text)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:10px;color:var(--text-tertiary);flex:1;">${displayDate}${showThisHistory?' <span style="font-style:italic;">(edited)</span>':''}</span>
+            ${showThisHistory&&Array.isArray(entry.history)&&entry.history.length?`<button onclick="viewClientNoteHistory(${c.id},${origIdx})" style="font-size:10px;padding:1px 6px;border:none;border-radius:3px;background:transparent;color:var(--text-tertiary);cursor:pointer;font-family:var(--font);text-decoration:underline;text-underline-offset:2px;">see changes</button>`:''}
+            <button onclick="startEditClientNote(${c.id},${origIdx})" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);">Edit</button>
+            <button onclick="inlineDeleteClientNote(${c.id},${origIdx})" style="font-size:11px;padding:2px 8px;border:0.5px solid rgba(163,45,45,0.3);border-radius:4px;background:transparent;color:#A32D2D;cursor:pointer;font-family:var(--font);">Delete</button>
+          </div>
+        </div>`;
+      }).join('');
+      const notesHtml=`<div style="display:flex;flex-direction:column;gap:0;margin-bottom:10px;">${noteEntries||'<div style="font-size:12px;color:var(--text-tertiary);font-style:italic;padding:4px 0;">No notes yet.</div>'}</div>
+        <div style="display:flex;gap:6px;align-items:flex-start;">
+          <textarea id="cnote-new" rows="2" placeholder="Add a note…" style="flex:1;padding:6px 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);resize:vertical;"></textarea>
+          <button onclick="addClientNote(${c.id})" style="height:34px;padding:0 12px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;font-family:var(--font);white-space:nowrap;">Add note</button>
+        </div>`;
+      return`<div class="detail-card" style="grid-column:1/-1;"><div class="detail-card-title">${esc(f.label)}</div>${notesHtml}</div>`;
+    }
     return`<div class="detail-card" style="${span}"><div class="detail-card-title">${esc(f.label)}</div><div class="detail-card-val">${v?esc(v):'<span class="muted">—</span>'}</div></div>`;
   }).join('');
 
   if(clientMode){
-    // Slim down fieldCards for client mode — inline key info, no grid cards
     const doctor=inf.doctor||'';
     const timezone=inf.timezone?inf.timezone.split('—')[0].trim():'';
     const numLocations=inf.numLocations||'';
@@ -1583,13 +1781,13 @@ function openAdvancedFields(clientId){
   const rows=fields.map((f,i)=>`
     <div class="af-row" draggable="true" data-idx="${i}" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:default;">
       <span class="af-handle" style="cursor:grab;color:var(--text-tertiary);font-size:16px;padding:0 2px;user-select:none;line-height:1;">⠿</span>
-      <input value="${esc(f.label)}" placeholder="Field name" style="flex:1;height:32px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);" id="af-label-${i}"/>
-      <select style="height:32px;padding:0 6px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:12px;font-family:var(--font);" id="af-type-${i}">
+      <input value="${esc(f.label)}" placeholder="Field name" style="flex:1;min-width:0;height:32px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);" id="af-label-${i}"/>
+      <select style="width:90px;flex-shrink:0;height:32px;padding:0 4px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-size:11px;font-family:var(--font);" id="af-type-${i}">
         <option value="text"${f.type==='text'?' selected':''}>Text</option>
         <option value="textarea"${f.type==='textarea'?' selected':''}>Textarea</option>
         <option value="timezone"${f.type==='timezone'?' selected':''}>Timezone</option>
       </select>
-      <button class="icon-btn" style="color:#A32D2D;font-size:16px;" onclick="removeAdvancedField(${i},${clientId})">×</button>
+      <button class="icon-btn" style="color:#A32D2D;font-size:16px;flex-shrink:0;" onclick="removeAdvancedField(${i},${clientId})">×</button>
     </div>`).join('');
   showModal(`
     <h3>Advanced settings</h3>
@@ -1688,53 +1886,177 @@ function setClientFieldsTemp(clientId,fields){
 }
 
 function addAdvancedField(clientId){
-  const fields=readAdvancedFieldsFromDOM(clientId);
-  fields.push({key:'custom_'+Date.now(),label:'New field',type:'text',placeholder:''});
-  setClientFieldsTemp(clientId,fields);
-  openAdvancedFields(clientId);
+  const container=document.getElementById('af-rows');
+  if(!container)return;
+  const i=container.querySelectorAll('.af-row').length;
+  const div=document.createElement('div');
+  div.className='af-row';
+  div.draggable=true;
+  div.dataset.idx=i;
+  div.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:default;';
+  div.innerHTML=`<span class="af-handle" style="cursor:grab;color:var(--text-tertiary);font-size:16px;padding:0 2px;user-select:none;line-height:1;">⠿</span>
+    <input value="" placeholder="Field name" style="flex:1;min-width:0;height:32px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);" id="af-label-${i}"/>
+    <select style="width:90px;flex-shrink:0;height:32px;padding:0 4px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-size:11px;font-family:var(--font);" id="af-type-${i}">
+      <option value="text" selected>Text</option>
+      <option value="textarea">Textarea</option>
+      <option value="timezone">Timezone</option>
+    </select>
+    <button class="icon-btn" style="color:#A32D2D;font-size:16px;flex-shrink:0;" onclick="removeAdvancedField(${i},${clientId})">×</button>`;
+  container.appendChild(div);
+  initDragSort(clientId);
+  // Focus the new label input
+  setTimeout(()=>{const el=document.getElementById('af-label-'+i);if(el)el.focus();},50);
 }
 
 function removeAdvancedField(idx,clientId){
   const fields=readAdvancedFieldsFromDOM(clientId);
   const field=fields[idx];
   const label=field&&field.label?field.label:'this field';
-  window._pendingFieldRemove={idx,clientId};
+  const key=field&&field.key?field.key:'';
+  const isDefault=DEFAULT_FIELDS.some(f=>f.key===key);
+  const isNotes=key==='notes';
+
+  if(isNotes){
+    showModal(`
+      <h3>Cannot delete Notes</h3>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:8px;">The Notes field is protected and cannot be removed.</p>
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="m-save" onclick="openAdvancedFields(${clientId})">OK</button>
+      </div>`);
+    return;
+  }
+
+  if(isDefault){
+    // Need admin password first
+    showModal(`
+      <h3>Delete default field?</h3>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:8px;"><strong>${esc(label)}</strong> is a default field. Enter the admin password to delete it.</p>
+      <div class="fgroup" style="margin-top:12px;">
+        <input id="af-del-pw" type="password" placeholder="Admin password" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="m-cancel" onclick="openAdvancedFields(${clientId})">Cancel</button>
+        <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="confirmDefaultFieldDelete(${idx},'${esc(key)}','${esc(label)}',${clientId})">Continue</button>
+      </div>`);
+    setTimeout(()=>{const el=document.getElementById('af-del-pw');if(el)el.focus();},50);
+    return;
+  }
+
+  // Custom field — show delete options
+  window._pendingFieldRemove={idx,clientId,key,label};
   showModal(`
-    <h3>Remove field?</h3>
-    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:4px;"><strong>${esc(label)}</strong> will be removed. Any data saved in this field for this client will no longer be visible.</p>
-    <div class="modal-actions" style="margin-top:12px;">
-      <button class="m-cancel" onclick="openAdvancedFields(${clientId})">Cancel</button>
-      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="doRemoveAdvancedField()">Remove</button>
+    <h3>Delete field?</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:8px;">Remove <strong>${esc(label)}</strong>?</p>
+    <div class="modal-actions" style="margin-top:12px;flex-direction:column;gap:8px;">
+      <button class="m-cancel" onclick="openAdvancedFields(${clientId})" style="width:100%;">Cancel</button>
+      <button onclick="doRemoveAdvancedField(false)" style="width:100%;height:34px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);">Delete for this client only</button>
+      <button onclick="doRemoveAdvancedField(true)" style="width:100%;height:34px;border:none;border-radius:var(--radius-md);background:#A32D2D;color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);">Delete for all clients</button>
     </div>`);
 }
 
-function doRemoveAdvancedField(){
-  const{idx,clientId}=window._pendingFieldRemove||{};
+function confirmDefaultFieldDelete(idx,key,label,clientId){
+  const pw=(document.getElementById('af-del-pw')||{}).value||'';
+  if(pw!=='harrypotter'){
+    showModal(`
+      <h3>Incorrect password</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">That password is incorrect.</p>
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="m-save" onclick="openAdvancedFields(${clientId})">OK</button>
+      </div>`);
+    return;
+  }
+  window._pendingFieldRemove={idx,clientId,key,label};
+  showModal(`
+    <h3>Delete default field?</h3>
+    <div style="padding:10px 12px;background:#FCEBEB;border-radius:var(--radius-md);margin:10px 0;border:0.5px solid rgba(163,45,45,0.2);">
+      <p style="font-size:13px;color:#A32D2D;line-height:1.6;">Deleting <strong>${esc(label)}</strong> will remove it and all its data permanently.</p>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;flex-direction:column;gap:8px;">
+      <button class="m-cancel" onclick="openAdvancedFields(${clientId})" style="width:100%;">Cancel</button>
+      <button onclick="doRemoveAdvancedField(false)" style="width:100%;height:34px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);">Delete for this client only</button>
+      <button onclick="doRemoveAdvancedField(true)" style="width:100%;height:34px;border:none;border-radius:var(--radius-md);background:#A32D2D;color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);">Delete for all clients</button>
+    </div>`);
+}
+
+function doRemoveAdvancedField(forAll){
+  const{idx,clientId,key,label}=window._pendingFieldRemove||{};
+  window._pendingFieldRemove=null;
+  if(forAll){
+    // Check how many clients actually have this field
+    const clientsWithField=S.clients.filter(c=>{
+      const fields=Array.isArray(c.fields)?c.fields:(S.fields||DEFAULT_FIELDS);
+      return fields.some(f=>f.key===key);
+    });
+    const missingCount=S.clients.length-clientsWithField.length;
+    if(missingCount>0&&clientsWithField.length===1&&clientsWithField[0].id===clientId){
+      // Field only exists on this client
+      showModal(`
+        <h3>Field not shared</h3>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:8px;"><strong>${esc(label||'This field')}</strong> only exists for this client — it hasn't been applied to any others.</p>
+        <div class="modal-actions" style="margin-top:12px;">
+          <button class="m-cancel" onclick="openAdvancedFields(${clientId})">Cancel</button>
+          <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;" onclick="_doDeleteThisClientField(${clientId},'${esc(key)}')">Delete for this client</button>
+        </div>`);
+      window._pendingFieldRemove={idx,clientId,key,label};
+      return;
+    }
+    // Remove from global fields and all clients
+    if(Array.isArray(S.fields)) S.fields=S.fields.filter(f=>f.key!==key);
+    S.clients.forEach(c=>{
+      if(Array.isArray(c.fields)) c.fields=c.fields.filter(f=>f.key!==key);
+      if(c.info) delete c.info[key];
+    });
+    save();openAdvancedFields(clientId);
+    showToast(`"${label||'Field'}" removed from all clients`);
+  } else {
+    const fields=readAdvancedFieldsFromDOM(clientId);
+    fields.splice(idx,1);
+    setClientFieldsTemp(clientId,fields);
+    save();openAdvancedFields(clientId);
+  }
+}
+
+function _doDeleteThisClientField(clientId,key){
+  const{idx}=window._pendingFieldRemove||{};
   window._pendingFieldRemove=null;
   const fields=readAdvancedFieldsFromDOM(clientId);
-  fields.splice(idx,1);
+  const i=fields.findIndex(f=>f.key===key);
+  if(i>-1) fields.splice(i,1);
+  else if(idx!==undefined) fields.splice(idx,1);
   setClientFieldsTemp(clientId,fields);
-  openAdvancedFields(clientId);
+  save();openAdvancedFields(clientId);
 }
 
 function readAdvancedFieldsFromDOM(clientId){
   const existing=getClientFields(clientId);
-  return existing.map((f,i)=>{
+  const rows=document.querySelectorAll('#af-rows .af-row');
+  return [...rows].map((row,i)=>{
     const labelEl=document.getElementById('af-label-'+i);
     const typeEl=document.getElementById('af-type-'+i);
-    return{key:f.key,label:labelEl?labelEl.value.trim()||f.label:f.label,type:typeEl?typeEl.value:f.type,placeholder:f.placeholder||''};
+    const orig=existing[i]||{};
+    const label=(labelEl?labelEl.value.trim():'')||orig.label||'New field';
+    const key=orig.key||(label?'custom_'+label.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_')+'_'+i:'custom_'+i);
+    return{
+      key,
+      label,
+      type:typeEl?typeEl.value:(orig.type||'text'),
+      placeholder:orig.placeholder||''
+    };
   });
 }
 
 function saveAdvancedFields(clientId,applyAll){
   const fields=readAdvancedFieldsFromDOM(clientId);
+  // Filter out any rows with blank labels
+  const validFields=fields.filter(f=>f.label&&f.label.trim()&&f.label!=='New field'||DEFAULT_FIELDS.some(d=>d.key===f.key));
   if(applyAll){
-    S.fields=fields;
-    S.clients.forEach(c=>{c.fields=JSON.parse(JSON.stringify(fields));});
+    S.fields=validFields;
+    S.clients.forEach(c=>{c.fields=JSON.parse(JSON.stringify(validFields));});
   } else {
-    setClientFieldsTemp(clientId,fields);
+    setClientFieldsTemp(clientId,validFields);
   }
   save();
+  render();
   openClientModal(clientId==='null'?null:parseInt(clientId));
 }
 
@@ -1934,25 +2256,34 @@ function inlineConfirm(el,label,onConfirm){
 }
 
 function confirmDeleteCategoryAllClients(cat){
-  const count=S.links.filter(l=>l.category===cat).length;
   showModal(`
     <h3>Delete category for all clients?</h3>
-    <div style="padding:10px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);margin:10px 0;font-size:13px;color:var(--text-primary);">
-      <strong>${esc(cat)}</strong>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:8px;">Are you sure you want to delete <strong>${esc(cat)}</strong> from all clients?</p>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;font-family:var(--font);" onclick="confirmDeleteCategoryStep2('${esc(cat)}')">Yes</button>
+    </div>`);
+}
+
+function confirmDeleteCategoryStep2(cat){
+  const count=S.links.filter(l=>l.category===cat).length;
+  showModal(`
+    <h3>Final confirmation</h3>
+    <div style="padding:10px 12px;background:#FCEBEB;border-radius:var(--radius-md);margin:10px 0;border:0.5px solid rgba(163,45,45,0.2);">
+      <p style="font-size:13px;color:#A32D2D;line-height:1.6;">This will delete all <strong>${count}</strong> file${count!==1?'s':''} under <strong>${esc(cat)}</strong> from every client. This cannot be undone.</p>
     </div>
-    <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">This will permanently remove all <strong>${count}</strong> file${count!==1?'s':''} under this category across every client. This cannot be undone.</p>
     <div class="modal-actions" style="margin-top:12px;">
       <button class="m-cancel" onclick="closeModal()">Cancel</button>
-      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;font-family:var(--font);" onclick="doDeleteCategoryAllClients('${esc(cat)}')">Delete all</button>
+      <button class="m-danger" style="border:none;background:#A32D2D;color:#fff;height:34px;padding:0 16px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;font-family:var(--font);" onclick="doDeleteCategoryAllClients('${esc(cat)}')">Proceed</button>
     </div>`);
 }
 
 function doDeleteCategoryAllClients(cat){
   S.links=S.links.filter(l=>l.category!==cat);
-  // Also clean up global hidden categories and client overrides
   if(Array.isArray(S.hiddenCategories)) S.hiddenCategories=S.hiddenCategories.filter(c=>c!==cat);
   S.clients.forEach(c=>{if(c.categoryOverrides) delete c.categoryOverrides[cat];});
   save();closeModal();render();
+  showToast(`"${cat}" removed from all clients`);
 }
 
 function confirmDeleteLink(id){
@@ -2187,52 +2518,113 @@ function openMarkPaid(clientId){
   const today=new Date().toISOString().split('T')[0];
   const presetAmount=(c.billing&&c.billing.monthlyAmount)?c.billing.monthlyAmount:'';
   const billingContacts=Array.isArray(c.billingContacts)?c.billingContacts:[];
-  const billingRow=billingContacts.length?`<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;line-height:1.7;">
+  const billingRow=billingContacts.length?`<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:10px;line-height:1.7;">
     ${billingContacts.map(bc=>`<div><strong style="color:var(--text-secondary);">${esc(bc.name)}${bc.title?` — ${esc(bc.title)}`:''}</strong>${(bc.emails||[]).map(e=>`<span> · <a href="mailto:${esc(e)}" style="color:var(--text-secondary);text-decoration:none;">${esc(e)}</a></span>`).join('')}${(bc.phones||[]).map(p=>`<span> · ${esc(p)}</span>`).join('')}</div>`).join('')}
   </div>`:'';
+
+  window._bulkPayments=[];
+
   showModal(`
-    <h3>Mark payment — ${esc(c.name)}</h3>
+    <h3>Record payment — ${esc(c.name)}</h3>
     ${billingRow}
-    <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
-      <div class="fgroup">
-        <div class="flabel">Amount ($)${presetAmount?` <span style="font-weight:400;color:var(--text-tertiary);">— pre-filled from billing settings</span>`:''}</div>
-        <input id="pay-amount" type="number" min="0" step="0.01" value="${presetAmount}" placeholder="0.00" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+      <div style="display:flex;gap:8px;">
+        <div class="fgroup" style="flex:1;margin:0;">
+          <div class="flabel">Amount ($)${presetAmount?` <span style="font-weight:400;color:var(--text-tertiary);">— billing preset</span>`:''}</div>
+          <input id="pay-amount" type="number" min="0" step="0.01" value="${presetAmount}" placeholder="0.00" style="height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+        </div>
+        <div class="fgroup" style="flex:1;margin:0;">
+          <div class="flabel">Date</div>
+          <input id="pay-date" type="date" value="${today}" style="height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+        </div>
       </div>
-      <div class="fgroup">
-        <div class="flabel">Payment date</div>
-        <input id="pay-date" type="date" value="${today}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
-      </div>
-      <div class="fgroup">
+      <div class="fgroup" style="margin:0;">
         <div class="flabel">Note (optional)</div>
-        <input id="pay-note" placeholder="e.g. Monthly retainer, Invoice #123" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+        <input id="pay-note" placeholder="e.g. Monthly retainer, Invoice #123" style="height:34px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
       </div>
+      <button onclick="addBulkPayment(${clientId})" style="height:34px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);">+ Add to list</button>
     </div>
-    <div class="modal-actions" style="margin-top:16px;">
+    <div id="bulk-list" style="display:flex;flex-direction:column;gap:0;border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;margin-bottom:12px;display:none;"></div>
+    <div id="bulk-total" style="font-size:12px;color:var(--text-tertiary);text-align:right;margin-bottom:8px;display:none;"></div>
+    <div class="modal-actions">
       <button class="m-cancel" onclick="closeModal()">Cancel</button>
-      <button class="m-save" onclick="confirmMarkPaid(${clientId})">Record payment</button>
+      <button class="m-save" id="bulk-save-btn" onclick="saveBulkPayments(${clientId})" style="display:none;">Save all payments</button>
+      <button class="m-save" onclick="addBulkPaymentAndSave(${clientId})">Record payment</button>
     </div>`);
   setTimeout(()=>{const el=document.getElementById('pay-amount');if(el){el.focus();el.select();}},50);
 }
 
-function confirmMarkPaid(clientId){
+function addBulkPayment(clientId){
   const amount=parseFloat(document.getElementById('pay-amount').value)||0;
   const date=document.getElementById('pay-date').value;
   const note=document.getElementById('pay-note').value.trim();
   if(!amount||amount<=0){alert('Please enter a valid amount.');return;}
   if(!date){alert('Please select a date.');return;}
   const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  window._pendingPayment={clientId,amount,date,fmt,note};
-  showModal(`
-    <h3>Confirm payment?</h3>
-    <div style="padding:12px 14px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-top:10px;">
-      <div style="font-size:13px;font-weight:500;color:var(--text-primary);">$${amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-      <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">${fmt}</div>
-      ${note?`<div style="font-size:12px;color:var(--text-tertiary);margin-top:3px;">${esc(note)}</div>`:''}
-    </div>
-    <div class="modal-actions" style="margin-top:12px;">
-      <button class="m-cancel" onclick="openMarkPaid(${clientId})">← Back</button>
-      <button class="m-save" onclick="doMarkPaid()">Confirm</button>
-    </div>`);
+  window._bulkPayments.push({id:Date.now()+(window._bulkPayments.length),amount,date,fmt,note});
+
+  // Reset note but keep amount preset
+  document.getElementById('pay-note').value='';
+  document.getElementById('pay-amount').focus();
+  document.getElementById('pay-amount').select();
+
+  refreshBulkList();
+}
+
+function addBulkPaymentAndSave(clientId){
+  const amount=parseFloat(document.getElementById('pay-amount').value)||0;
+  const date=document.getElementById('pay-date').value;
+  const note=document.getElementById('pay-note').value.trim();
+  if(!amount||amount<=0){alert('Please enter a valid amount.');return;}
+  if(!date){alert('Please select a date.');return;}
+  const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  window._bulkPayments.push({id:Date.now()+(window._bulkPayments.length),amount,date,fmt,note});
+  saveBulkPayments(clientId);
+}
+
+function removeBulkPayment(idx){
+  window._bulkPayments.splice(idx,1);
+  refreshBulkList();
+}
+
+function refreshBulkList(){
+  const list=document.getElementById('bulk-list');
+  const totalEl=document.getElementById('bulk-total');
+  const saveBtn=document.getElementById('bulk-save-btn');
+  if(!list||!window._bulkPayments.length){
+    if(list) list.style.display='none';
+    if(totalEl) totalEl.style.display='none';
+    if(saveBtn) saveBtn.style.display='none';
+    return;
+  }
+  list.style.display='flex';
+  totalEl.style.display='block';
+  saveBtn.style.display='inline-flex';
+  const total=window._bulkPayments.reduce((s,p)=>s+Number(p.amount),0);
+  list.innerHTML=window._bulkPayments.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:0.5px solid var(--border-light);background:var(--bg-primary);">
+      <div style="flex:1;">
+        <span style="font-size:13px;font-weight:500;color:var(--text-primary);">$${Number(p.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        <span style="font-size:11px;color:var(--text-tertiary);margin-left:8px;">${esc(p.fmt)}${p.note?` · ${esc(p.note)}`:''}</span>
+      </div>
+      <button onclick="removeBulkPayment(${i})" style="font-size:11px;padding:2px 8px;border:0.5px solid rgba(163,45,45,0.3);border-radius:4px;background:transparent;color:#A32D2D;cursor:pointer;font-family:var(--font);">Remove</button>
+    </div>`).join('');
+  totalEl.textContent=`${window._bulkPayments.length} payment${window._bulkPayments.length!==1?'s':''} queued · Total: $${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+}
+
+function saveBulkPayments(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!window._bulkPayments.length)return;
+  if(!Array.isArray(c.payments)) c.payments=[];
+  window._bulkPayments.forEach(p=>c.payments.push({...p,recorded:new Date().toISOString()}));
+  const count=window._bulkPayments.length;
+  window._bulkPayments=[];
+  save();closeModal();render();
+  showToast(`${count} payment${count!==1?'s':''} recorded`);
+}
+
+function confirmMarkPaid(clientId){
+  addBulkPaymentAndSave(clientId);
 }
 
 function doMarkPaid(){
@@ -2243,6 +2635,7 @@ function doMarkPaid(){
   if(!Array.isArray(c.payments)) c.payments=[];
   c.payments.push({id:Date.now(),amount,date,fmt,note,recorded:new Date().toISOString()});
   save();closeModal();render();
+  showToast('Payment recorded');
 }
 
 function openPaymentHistory(clientId){
@@ -2255,11 +2648,12 @@ function openPaymentHistory(clientId){
   const months=['All','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   const rows=payments.length?payments.map((p,i)=>`
-    <div id="pay-row-${p.id}" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border-light);background:var(--bg-primary);">
+    <div id="pay-row-${p.id}" style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:0.5px solid var(--border-light);background:var(--bg-primary);">
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:500;color:var(--text-primary);">$${Number(p.amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">${esc(p.fmt||p.date)}${p.note?` · ${esc(p.note)}`:''}</div>
       </div>
+      <button onclick="openEditPayment(${clientId},${p.id})" style="font-size:11px;padding:2px 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);">Edit</button>
       <button onclick="inlineDeletePayment(${clientId},${p.id},this)" style="font-size:11px;padding:2px 8px;border:0.5px solid rgba(163,45,45,0.3);border-radius:4px;background:transparent;color:#A32D2D;cursor:pointer;font-family:var(--font);">Delete</button>
     </div>`).join('')
     :'<div style="padding:16px;font-size:13px;color:var(--text-tertiary);font-style:italic;text-align:center;">No payments recorded yet.</div>';
@@ -2270,28 +2664,159 @@ function openPaymentHistory(clientId){
         <h3>${esc(c.name)}</h3>
         <div style="font-size:12px;color:var(--text-tertiary);margin-top:2px;">Payment history</div>
       </div>
-      <div style="text-align:right;">
-        <div style="font-size:11px;color:var(--text-tertiary);">Total collected</div>
-        <div style="font-size:18px;font-weight:500;color:var(--text-primary);">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${payments.length>1?`<span class="hidden-icon-wrap" onmouseenter="showHiddenTooltip(event,'Payments over time graph')" onmouseleave="hideHiddenTooltip()"><button onclick="togglePaymentChart()" id="chart-toggle-btn" style="background:none;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </button></span>`:''}
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-tertiary);">Total collected</div>
+          <div style="font-size:18px;font-weight:500;color:var(--text-primary);">$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        </div>
       </div>
     </div>
-    <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;max-height:320px;overflow-y:auto;">
+    <div id="pay-chart-wrap" style="display:none;position:relative;width:100%;height:160px;margin-bottom:14px;"><canvas id="pay-chart" role="img" aria-label="Payment history chart for ${esc(c.name)}"></canvas></div>
+    <div style="border:0.5px solid var(--border-light);border-radius:var(--radius-md);overflow:hidden;max-height:280px;overflow-y:auto;">
       ${rows}
     </div>
     <div class="modal-actions" style="margin-top:12px;">
       <button class="m-cancel" onclick="closeModal()">Close</button>
       <button class="m-save" onclick="closeModal();openMarkPaid(${clientId})">+ Record payment</button>
     </div>`);
+
+  window._payChartInstance=null;
+  window._payChartVisible=false;
+  window._payChartData={
+    labels:[...[...payments].sort((a,b)=>a.date.localeCompare(b.date))].map(p=>p.fmt||p.date),
+    data:[...[...payments].sort((a,b)=>a.date.localeCompare(b.date))].map(p=>Number(p.amount))
+  };
+
+  window.togglePaymentChart=function(){
+    const wrap=document.getElementById('pay-chart-wrap');
+    const btn=document.getElementById('chart-toggle-btn');
+    if(!wrap)return;
+    window._payChartVisible=!window._payChartVisible;
+    wrap.style.display=window._payChartVisible?'block':'none';
+    btn.style.background=window._payChartVisible?'var(--bg-secondary)':'none';
+    btn.style.color=window._payChartVisible?'var(--text-primary)':'var(--text-tertiary)';
+    if(window._payChartVisible&&!window._payChartInstance){
+      const buildChart=()=>{
+        const canvas=document.getElementById('pay-chart');
+        if(!canvas)return;
+        window._payChartInstance=new window.Chart(canvas,{
+          type:'line',
+          data:{
+            labels:window._payChartData.labels,
+            datasets:[{label:'Payment',data:window._payChartData.data,borderColor:'#0b1d5e',backgroundColor:'rgba(11,29,94,0.08)',borderWidth:2,pointBackgroundColor:'#bc9762',pointRadius:4,tension:0.3,fill:true}]
+          },
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+Number(ctx.raw).toLocaleString('en-US',{minimumFractionDigits:2})}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:8}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>'$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:0}),font:{size:10}}}}}
+        });
+      };
+      if(window.Chart) buildChart();
+      else{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';s.onload=buildChart;document.head.appendChild(s);}
+    }
+  };
+}
+
+function openEditPayment(clientId,payId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c)return;
+  const p=(c.payments||[]).find(x=>x.id===payId);
+  if(!p)return;
+  showModal(`
+    <h3>Edit payment — ${esc(c.name)}</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+      <div class="fgroup">
+        <div class="flabel">Amount ($)</div>
+        <input id="ep-amount" type="number" min="0" step="0.01" value="${p.amount}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Payment date</div>
+        <input id="ep-date" type="date" value="${p.date}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Note (optional)</div>
+        <input id="ep-note" value="${esc(p.note||'')}" placeholder="e.g. Monthly retainer, Invoice #123" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="m-cancel" onclick="openPaymentHistory(${clientId})">← Back</button>
+      <button class="m-save" onclick="saveEditPayment(${clientId},${payId})">Save changes</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('ep-amount');if(el){el.focus();el.select();}},50);
+}
+
+function saveEditPayment(clientId,payId){
+  const amount=parseFloat(document.getElementById('ep-amount').value)||0;
+  const date=document.getElementById('ep-date').value;
+  const note=document.getElementById('ep-note').value.trim();
+  if(!amount||amount<=0){alert('Please enter a valid amount.');return;}
+  if(!date){alert('Please select a date.');return;}
+  const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!c.payments)return;
+  const p=c.payments.find(x=>x.id===payId);
+  if(!p)return;
+  p.amount=amount;p.date=date;p.fmt=fmt;p.note=note;
+  save();
+  showToast('Payment updated');
+  openPaymentHistory(clientId);
+}
+
+function openEditPayment(clientId,payId){
+  const c=S.clients.find(x=>x.id===clientId);
+  const p=c&&(c.payments||[]).find(x=>x.id===payId);
+  if(!p)return;
+  showModal(`
+    <h3>Edit payment</h3>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
+      <div class="fgroup">
+        <div class="flabel">Amount ($)</div>
+        <input id="ep-amount" type="number" min="0" step="0.01" value="${p.amount}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Payment date</div>
+        <input id="ep-date" type="date" value="${p.date}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Note (optional)</div>
+        <input id="ep-note" value="${esc(p.note||'')}" placeholder="e.g. Monthly retainer, Invoice #123" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="m-cancel" onclick="openPaymentHistory(${clientId})">← Back</button>
+      <button class="m-save" onclick="saveEditPayment(${clientId},${payId})">Save changes</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('ep-amount');if(el){el.focus();el.select();}},50);
+}
+
+function saveEditPayment(clientId,payId){
+  const amount=parseFloat(document.getElementById('ep-amount').value)||0;
+  const date=document.getElementById('ep-date').value;
+  const note=document.getElementById('ep-note').value.trim();
+  if(!amount||amount<=0){alert('Please enter a valid amount.');return;}
+  if(!date){alert('Please select a date.');return;}
+  const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const c=S.clients.find(x=>x.id===clientId);
+  const p=c&&(c.payments||[]).find(x=>x.id===payId);
+  if(!p)return;
+  p.amount=amount;p.date=date;p.fmt=fmt;p.note=note;
+  save();openPaymentHistory(clientId);
+  showToast('Payment updated');
 }
 
 function inlineDeletePayment(clientId,payId,btn){
   const row=document.getElementById('pay-row-'+payId);
   if(!row)return;
   const orig=row.innerHTML;
+  const origBg=row.style.background;
   row.style.background='var(--bg-secondary)';
   row.innerHTML=`<span style="flex:1;font-size:12px;color:var(--text-primary);">Remove this payment?</span>
-    <button type="button" onclick="this.closest('#pay-row-${payId}').innerHTML='${orig.replace(/'/g,"\\'")}'" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
+    <button type="button" id="pay-cancel-${payId}" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:4px;background:transparent;color:var(--text-secondary);font-size:11px;cursor:pointer;font-family:var(--font);">Cancel</button>
     <button type="button" onclick="doDeletePayment(${clientId},${payId})" style="height:22px;padding:0 8px;border:none;border-radius:4px;background:#A32D2D;color:#fff;font-size:11px;cursor:pointer;font-family:var(--font);">Remove</button>`;
+  document.getElementById('pay-cancel-'+payId).addEventListener('click',()=>{
+    row.innerHTML=orig;
+    row.style.background=origBg;
+  });
 }
 
 function confirmDeletePayment(clientId,payId){inlineDeletePayment(clientId,payId);}
