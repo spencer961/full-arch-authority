@@ -40,13 +40,30 @@
   }
   body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;}
   .app{max-width:1100px;margin:0 auto;padding:1.5rem 1rem;}
-  .page-title{font-size:18px;font-weight:700;color:#bc9762;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:14px 1rem;letter-spacing:.01em;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;}
+  .page-title{font-size:18px;font-weight:700;color:#bc9762;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;letter-spacing:.01em;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;}
   .page-title span{font-size:12px;font-weight:400;color:rgba(255,255,255,0.45);}
-  .page-title .title-left{display:flex;align-items:center;gap:10px;flex:1;}
-  .portal-nav{display:flex;gap:6px;margin-left:auto;}
-  .portal-nav-btn{height:28px;padding:0 12px;border:0.5px solid rgba(255,255,255,0.2);border-radius:6px;background:transparent;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:background .15s,color .15s;}
-  .portal-nav-btn:hover{background:rgba(255,255,255,0.1);color:#fff;}
-  .portal-nav-btn.active{background:rgba(188,151,98,0.15);border-color:rgba(188,151,98,0.4);color:#bc9762;}
+  .page-title .title-left{display:flex;flex-direction:column;gap:2px;flex:1;}
+  .page-title .title-left .title-main{font-size:17px;font-weight:700;color:#bc9762;line-height:1.2;}
+  .page-title .title-left .title-sub{font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);}
+  .hdr-right{display:flex;align-items:center;gap:6px;}
+  .hdr-icon-btn{width:32px;height:32px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.18);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;color:rgba(255,255,255,0.65);flex-shrink:0;}
+  .hdr-icon-btn:hover{background:rgba(255,255,255,0.08);}
+  .hdr-icon-btn .notif-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:#bc9762;color:#0b1d5e;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #0b1d5e;padding:0 3px;}
+  .hdr-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:10px;border:0.5px solid rgba(0,0,0,0.1);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:500;min-width:240px;overflow:hidden;display:none;}
+  .hdr-dropdown.open{display:block;}
+  .hdr-drop-head{padding:7px 12px;font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);}
+  .hdr-drop-row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:0.5px solid var(--border-light);}
+  .hdr-drop-row:hover{background:var(--bg-secondary);}
+  .hdr-drop-row:last-child{border-bottom:none;}
+  .hdr-drop-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .hdr-drop-label{font-size:13px;color:var(--text-primary);font-weight:500;flex:1;}
+  .hdr-drop-sub{font-size:11px;color:var(--text-tertiary);margin-top:1px;}
+  .hdr-drop-tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;white-space:nowrap;flex-shrink:0;}
+  .notif-row{display:flex;gap:10px;padding:10px 12px;border-bottom:0.5px solid var(--border-light);cursor:pointer;}
+  .notif-row:hover{background:var(--bg-secondary);}
+  .notif-row:last-child{border-bottom:none;}
+  .notif-unread-dot{width:7px;height:7px;border-radius:50%;background:#bc9762;flex-shrink:0;margin-top:4px;}
+  .notif-read-dot{width:7px;height:7px;border-radius:50%;background:var(--border-mid);flex-shrink:0;margin-top:4px;}
 
   /* top bar */
   .top-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1.25rem;}
@@ -314,6 +331,166 @@ function hideHiddenTooltip(){
   if(t) t.style.display='none';
 }
 
+function closeAllPanels(){
+  document.getElementById('notif-panel')?.classList.remove('open');
+  document.getElementById('apps-panel')?.classList.remove('open');
+}
+
+function toggleNotifPanel(e,tab){
+  if(e) e.stopPropagation();
+  const panel=document.getElementById('notif-panel');
+  const apps=document.getElementById('apps-panel');
+  apps?.classList.remove('open');
+  if(panel?.classList.contains('open')&&!tab){panel.classList.remove('open');return;}
+  panel?.classList.add('open');
+  renderNotifPanel(tab||'all');
+}
+
+function toggleAppsMenu(e){
+  e.stopPropagation();
+  const panel=document.getElementById('apps-panel');
+  const notif=document.getElementById('notif-panel');
+  notif?.classList.remove('open');
+  panel?.classList.toggle('open');
+  // Update forms badge
+  const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
+  const unread=subs.filter(s=>!s.reviewed).length;
+  const badge=document.getElementById('apps-forms-badge');
+  if(badge){badge.textContent=unread+' new';badge.style.display=unread?'inline-flex':'none';}
+}
+
+function renderNotifPanel(tab){
+  const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
+  const unread=subs.filter(s=>!s.reviewed);
+  const read=subs.filter(s=>s.reviewed);
+  const head=document.getElementById('notif-head');
+  const list=document.getElementById('notif-list');
+  if(!head||!list) return;
+  head.textContent=unread.length?`${unread.length} unread`:'Notifications';
+  let html='';
+  if(!subs.length){
+    html='<div style="padding:20px 14px;font-size:13px;color:var(--text-tertiary);text-align:center;font-style:italic;">No notifications yet</div>';
+  } else {
+    if(unread.length){
+      html+=`<div class="hdr-drop-head">New · ${unread.length}</div>`;
+      html+=unread.map(s=>`
+        <div class="notif-row" onclick="openSubmission('${s.id}')">
+          <div class="notif-unread-dot"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">New onboarding form from <strong>${esc(s.practiceName||s.email||'Unknown')}</strong></div>
+            <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">${esc(s.submittedAt?new Date(s.submittedAt).toLocaleString():'')}</div>
+          </div>
+        </div>`).join('');
+    }
+    if(read.length){
+      html+=`<div class="hdr-drop-head" style="${unread.length?'border-top:0.5px solid var(--border-light);':''}">Earlier</div>`;
+      html+=read.slice(0,5).map(s=>`
+        <div class="notif-row" style="opacity:0.6;" onclick="openSubmission('${s.id}')">
+          <div class="notif-read-dot"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">Onboarding form from <strong>${esc(s.practiceName||s.email||'Unknown')}</strong></div>
+            <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">${esc(s.submittedAt?new Date(s.submittedAt).toLocaleDateString():'')}</div>
+          </div>
+        </div>`).join('');
+    }
+  }
+  list.innerHTML=html;
+}
+
+function updateNotifBadge(){
+  const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
+  const unread=subs.filter(s=>!s.reviewed).length;
+  const badge=document.getElementById('notif-badge');
+  if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
+}
+
+function openSubmission(id){
+  closeAllPanels();
+  const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
+  const sub=subs.find(s=>s.id===id);
+  if(!sub)return;
+  // Mark as reviewed
+  sub.reviewed=true;
+  save();updateNotifBadge();
+  // Open modal with full form + action buttons
+  const fields=[
+    {key:'practiceName',label:'Practice Name'},{key:'doctorName',label:'Doctor / Owner'},
+    {key:'officeManager',label:'Office Manager'},{key:'email',label:'Email'},
+    {key:'pricing',label:'Pricing'},{key:'monthlyGoal',label:'Monthly Goal'},
+    {key:'uvp',label:'Unique Value Proposition'},{key:'marketingCampaigns',label:'Marketing Campaigns'},
+    {key:'whoAnswersPhone',label:'Who Answers Phone'},{key:'bookingRate',label:'Booking Rate'},
+    {key:'showRate',label:'Show Rate'},{key:'closeRate',label:'Close Rate'},
+    {key:'mainIssues',label:'Main Issues / Goals'},
+  ];
+  const answers=sub.answers||{};
+  const rows=fields.filter(f=>answers[f.key]).map(f=>`
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">${esc(f.label)}</div>
+      <div style="font-size:13px;color:var(--text-primary);line-height:1.6;background:var(--bg-secondary);padding:8px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-light);">${esc(answers[f.key])}</div>
+    </div>`).join('');
+  const services=Array.isArray(answers.services)&&answers.services.length?`
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Services offered</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">${answers.services.map(s=>`<span style="font-size:11px;padding:3px 9px;border-radius:10px;background:#E6F1FB;color:#0C447C;font-weight:500;">${esc(s)}</span>`).join('')}</div>
+    </div>`:'';
+  showModal(`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;">
+      <div>
+        <h3>${esc(sub.practiceName||'Onboarding Submission')}</h3>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:3px;">${esc(sub.email||'')} · ${sub.submittedAt?new Date(sub.submittedAt).toLocaleString():''}</div>
+      </div>
+    </div>
+    <div style="max-height:380px;overflow-y:auto;padding-right:4px;">
+      ${services}${rows||'<div style="font-size:13px;color:var(--text-tertiary);">No form data</div>'}
+    </div>
+    <div class="modal-actions" style="margin-top:14px;border-top:0.5px solid var(--border-light);padding-top:12px;">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+      <button class="m-save" onclick="createClientFromSubmission('${id}')">+ Create client profile</button>
+    </div>`);
+}
+
+function createClientFromSubmission(id){
+  const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
+  const sub=subs.find(s=>s.id===id);
+  if(!sub)return;
+  const a=sub.answers||{};
+  // Pre-fill the new client modal
+  closeModal();
+  // Add the client with pre-filled info
+  const newId=S.nCid++;
+  const newClient={
+    id:newId,
+    name:a.practiceName||'New Client',
+    ci:newId,
+    info:{
+      doctor:a.doctorName||'',
+      website:'',
+      notes:'',
+      timezone:'',
+      numLocations:'',
+      locations:'',
+      staff:JSON.stringify(a.officeManager?[{name:a.officeManager,title:'Office Manager',phone:'',email:a.email||''}]:[])
+    },
+    fields:null,
+    practices:[],
+    practiceColors:{},
+    payments:[],
+    billing:{},
+    billingContacts:[],
+    notesLog:[],
+    categoryOverrides:{},
+    onboardingSubmissionId:id
+  };
+  S.clients.push(newClient);
+  sub.linkedClientId=newId;
+  save();render();
+  showToast(`"${newClient.name}" created from onboarding form`);
+  openClientModal(newId);
+}
+
+// Close panels when clicking outside
+document.addEventListener('click',()=>closeAllPanels());
+
 function migrateData(){
   if(!S||!S.clients)return;
   const JUNK=/^#[0-9A-Fa-f]{3,8}$|^(Blue|Amber|Green|Pink|Purple|Sage|Coral|Red|Gray)$/i;
@@ -336,7 +513,7 @@ let _syncTimer=null;
 
 let S=JSON.parse(localStorage.getItem('gmj_dashboard')||'null')||JSON.parse(JSON.stringify(DEFAULTS));
 migrateData();
-save();
+let _supabaseLoaded=false;
 let view='clients',filter='all',detailId=null,editMode=false,clientMode=false,clientModeId=null,accountingMode=false,reorderClientId=null;
 const activePractice={};
 
@@ -355,6 +532,7 @@ function setSyncStatus(s){
 }
 
 async function pushToSupabase(){
+  if(!_supabaseLoaded) return; // never overwrite before we've loaded
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
       method:'POST',
@@ -385,6 +563,8 @@ async function loadFromSupabase(){
   }catch(e){
     setSyncStatus('error');
     console.warn('Could not load from Supabase:',e);
+  }finally{
+    _supabaseLoaded=true; // safe to push now regardless of outcome
   }
 }
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
@@ -431,6 +611,7 @@ function openClientModeSelector(){
 
 function render(){
   const app=document.getElementById('app');
+  updateNotifBadge();
   if(detailId!==null){renderDetail(app);return;}
 
   if(clientMode){
@@ -451,10 +632,72 @@ function render(){
   }
 
   let html=`<div class="page-title">
-  <div class="title-left">Full-Arch Authority <span>Client Dashboard</span> <span id="sync-dot" title="" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--border-mid);margin-left:4px;vertical-align:middle;transition:background .3s;cursor:default;"></span></div>
-  <div class="portal-nav">
-    <button class="portal-nav-btn active" onclick="event.stopPropagation()">Dashboard</button>
-    <button class="portal-nav-btn" onclick="window.open('portal.html','_blank')">Client Portal ↗</button>
+  <div class="title-left">
+    <span class="title-main">Full-Arch Authority</span>
+    <span class="title-sub">Client Dashboard <span id="sync-dot" title="" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--border-mid);margin-left:6px;vertical-align:middle;transition:background .3s;cursor:default;"></span></span>
+  </div>
+  <div class="hdr-right">
+    <div style="position:relative;">
+      <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-badge" id="notif-badge" style="display:none;">0</div>
+      </button>
+      <div class="hdr-dropdown" id="notif-panel">
+        <div class="hdr-drop-head" id="notif-head">Notifications</div>
+        <div id="notif-list"></div>
+      </div>
+    </div>
+    <div style="position:relative;">
+      <button class="hdr-icon-btn" onclick="toggleAppsMenu(event)" id="apps-btn" title="Apps">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="hdr-dropdown" id="apps-panel">
+        <div class="hdr-drop-head">Your workspace</div>
+        <div class="hdr-drop-row" onclick="closeAllPanels()">
+          <div class="hdr-drop-icon" style="background:#E6F1FB;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0C447C" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </div>
+          <div style="flex:1;"><div class="hdr-drop-label">Dashboard</div><div class="hdr-drop-sub">Client management</div></div>
+          <span class="hdr-drop-tag" style="background:#EAF3DE;color:#27500A;">Active</span>
+        </div>
+        <div class="hdr-drop-row" onclick="closeAllPanels();toggleNotifPanel(null,'forms')">
+          <div class="hdr-drop-icon" style="background:#FAEEDA;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#633806" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div style="flex:1;"><div class="hdr-drop-label">Onboarding forms</div><div class="hdr-drop-sub">Review submissions</div></div>
+          <span class="hdr-drop-tag" id="apps-forms-badge" style="background:#FAEEDA;color:#633806;display:none;"></span>
+        </div>
+        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('portal.html','_blank')">
+          <div class="hdr-drop-icon" style="background:#EEEDFE;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3C3489" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div style="flex:1;"><div class="hdr-drop-label">Success Map</div><div class="hdr-drop-sub">Client progress tracker</div></div>
+          <span class="hdr-drop-tag" style="background:#EEEDFE;color:#3C3489;">↗</span>
+        </div>
+        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('portal.html','_blank')">
+          <div class="hdr-drop-icon" style="background:#E1F5EE;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#085041" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div style="flex:1;"><div class="hdr-drop-label">Client Portal</div><div class="hdr-drop-sub">Client-facing view</div></div>
+          <span class="hdr-drop-tag" style="background:#E1F5EE;color:#085041;">↗</span>
+        </div>
+        <div class="hdr-drop-head">Coming soon</div>
+        <div class="hdr-drop-row" style="opacity:0.45;cursor:default;">
+          <div class="hdr-drop-icon" style="background:#F1EFE8;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5E5A" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div style="flex:1;"><div class="hdr-drop-label">Metrics Scorecard</div><div class="hdr-drop-sub">In development</div></div>
+          <span class="hdr-drop-tag" style="background:#F1EFE8;color:#888786;">Soon</span>
+        </div>
+        <div class="hdr-drop-row" style="opacity:0.45;cursor:default;">
+          <div class="hdr-drop-icon" style="background:#F1EFE8;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5E5A" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div style="flex:1;"><div class="hdr-drop-label">Todo Lists</div><div class="hdr-drop-sub">In development</div></div>
+          <span class="hdr-drop-tag" style="background:#F1EFE8;color:#888786;">Soon</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
   <div class="top-bar">
@@ -2916,6 +3159,7 @@ function openAccountingOverview(){
 
 render();
 loadFromSupabase();
+document.addEventListener('DOMContentLoaded',updateNotifBadge);
 </script>
 </body>
 </html>
