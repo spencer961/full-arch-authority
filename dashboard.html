@@ -2032,8 +2032,9 @@ function checkAdvancedPassword(clientId){
 
 function openAdvancedFields(clientId){
   const fields=getClientFields(clientId);
-  const c=clients.find(x=>x.id===clientId)||{};
-  const existingUrl=c.info?.backupSheetUrl||'';
+  const cid=clientId==='null'||clientId===null?null:parseInt(clientId);
+  const c=cid!==null?clients.find(x=>x.id===cid):null;
+  const existingUrl=c?.info?.backupSheetUrl||'';
   const rows=fields.map((f,i)=>`
     <div class="af-row" draggable="true" data-idx="${i}" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:default;">
       <span class="af-handle" style="cursor:grab;color:var(--text-tertiary);font-size:16px;padding:0 2px;user-select:none;line-height:1;">⠿</span>
@@ -2311,7 +2312,7 @@ function saveAdvancedFields(clientId,applyAll){
   const validFields=fields.filter(f=>f.label&&f.label.trim()&&f.label!=='New field'||DEFAULT_FIELDS.some(d=>d.key===f.key));
   // Save backup sheet URL into client info (silently)
   const urlEl=document.getElementById('af-sheet-url');
-  if(urlEl&&clientId!=='null'){
+  if(urlEl&&clientId!=='null'&&clientId!==null){
     const cid=parseInt(clientId);
     const c=S.clients.find(x=>x.id===cid);
     if(c){
