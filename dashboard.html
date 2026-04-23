@@ -162,6 +162,9 @@
 </style>
 </head>
 <body>
+<div style="background:#bc9762;color:#0b1d5e;font-size:11px;font-weight:700;text-align:center;padding:5px;letter-spacing:.05em;">
+  DASHBOARD v2 — Apr 23 2026 · <span style="font-weight:400;opacity:0.7;">Remove this bar once confirmed</span>
+</div>
 <div class="app" id="app"></div>
 
 <script>
@@ -660,7 +663,7 @@ function render(){
           <div style="flex:1;"><div class="hdr-drop-label">Dashboard</div><div class="hdr-drop-sub">Client management</div></div>
           <span class="hdr-drop-tag" style="background:#EAF3DE;color:#27500A;">Active</span>
         </div>
-        <div class="hdr-drop-row" onclick="closeAllPanels();toggleNotifPanel(null,'forms')">
+        <div class="hdr-drop-row" onclick="document.getElementById('apps-panel')?.classList.remove('open');toggleNotifPanel(null,'forms')">
           <div class="hdr-drop-icon" style="background:#FAEEDA;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#633806" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </div>
