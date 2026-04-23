@@ -674,21 +674,21 @@ function render(){
           <div style="flex:1;"><div class="hdr-drop-label">Success Map</div><div class="hdr-drop-sub">Client progress tracker</div></div>
           <span class="hdr-drop-tag" style="background:#EEEDFE;color:#3C3489;">↗</span>
         </div>
-        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('portal.html','_blank')">
+        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('client.html','_blank')">
           <div class="hdr-drop-icon" style="background:#E1F5EE;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#085041" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
           <div style="flex:1;"><div class="hdr-drop-label">Client Portal</div><div class="hdr-drop-sub">Client-facing view</div></div>
           <span class="hdr-drop-tag" style="background:#E1F5EE;color:#085041;">↗</span>
         </div>
-        <div class="hdr-drop-head">Coming soon</div>
-        <div class="hdr-drop-row" style="opacity:0.45;cursor:default;">
-          <div class="hdr-drop-icon" style="background:#F1EFE8;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5E5A" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('metrics.html','_blank')">
+          <div class="hdr-drop-icon" style="background:#FAEEDA;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#633806" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
-          <div style="flex:1;"><div class="hdr-drop-label">Metrics Scorecard</div><div class="hdr-drop-sub">In development</div></div>
-          <span class="hdr-drop-tag" style="background:#F1EFE8;color:#888786;">Soon</span>
+          <div style="flex:1;"><div class="hdr-drop-label">Metrics Tracker</div><div class="hdr-drop-sub">Daily / weekly / monthly</div></div>
+          <span class="hdr-drop-tag" style="background:#FAEEDA;color:#633806;">↗</span>
         </div>
+        <div class="hdr-drop-head">Coming soon</div>
         <div class="hdr-drop-row" style="opacity:0.45;cursor:default;">
           <div class="hdr-drop-icon" style="background:#F1EFE8;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5E5A" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -2032,6 +2032,8 @@ function checkAdvancedPassword(clientId){
 
 function openAdvancedFields(clientId){
   const fields=getClientFields(clientId);
+  const c=clients.find(x=>x.id===clientId)||{};
+  const existingUrl=c.info?.backupSheetUrl||'';
   const rows=fields.map((f,i)=>`
     <div class="af-row" draggable="true" data-idx="${i}" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:default;">
       <span class="af-handle" style="cursor:grab;color:var(--text-tertiary);font-size:16px;padding:0 2px;user-select:none;line-height:1;">⠿</span>
@@ -2051,6 +2053,11 @@ function openAdvancedFields(clientId){
     <div style="display:flex;gap:6px;margin-bottom:10px;">
       <button onclick="resetFieldOrder(${clientId})" style="flex:1;height:32px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);">Reset order</button>
       <button onclick="confirmResetFields(${clientId})" style="flex:1;height:32px;padding:0 10px;border:0.5px solid rgba(163,45,45,0.3);border-radius:var(--radius-md);background:transparent;color:#A32D2D;font-size:12px;cursor:pointer;font-family:var(--font);">Reset fields</button>
+    </div>
+    <div style="border-top:0.5px solid var(--border-light);padding-top:10px;margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Redundancy</div>
+      <input id="af-sheet-url" type="url" value="${existingUrl}" placeholder="Google Sheet backup URL (paste Web App URL here)"
+        style="width:100%;height:32px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-secondary);font-size:12px;font-family:var(--font);"/>
     </div>
     <div style="border-top:0.5px solid var(--border-light);padding-top:10px;display:flex;gap:6px;">
       <button class="m-cancel" style="flex:1;" onclick="openClientModal(${clientId==='null'?'null':clientId})">← Back</button>
@@ -2301,8 +2308,17 @@ function readAdvancedFieldsFromDOM(clientId){
 
 function saveAdvancedFields(clientId,applyAll){
   const fields=readAdvancedFieldsFromDOM(clientId);
-  // Filter out any rows with blank labels
   const validFields=fields.filter(f=>f.label&&f.label.trim()&&f.label!=='New field'||DEFAULT_FIELDS.some(d=>d.key===f.key));
+  // Save backup sheet URL into client info (silently)
+  const urlEl=document.getElementById('af-sheet-url');
+  if(urlEl&&clientId!=='null'){
+    const cid=parseInt(clientId);
+    const c=S.clients.find(x=>x.id===cid);
+    if(c){
+      if(!c.info) c.info={};
+      c.info.backupSheetUrl=urlEl.value.trim();
+    }
+  }
   if(applyAll){
     S.fields=validFields;
     S.clients.forEach(c=>{c.fields=JSON.parse(JSON.stringify(validFields));});

@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full-Arch Authority — Metrics Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f4;color:#1a1a1a;font-size:13px;}
+button,input,select{font-family:inherit;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
+
+.hdr{background:#0b1d5e;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;}
+.hdr-title{font-size:17px;font-weight:700;color:#bc9762;letter-spacing:.01em;}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+
+.pill{padding:5px 12px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;}
+.pill:hover{background:rgba(255,255,255,0.08);}
+.pill.active{background:rgba(188,151,98,0.15);border-color:rgba(188,151,98,0.4);color:#bc9762;}
+
+.main{max-width:1100px;margin:0 auto;padding:20px;}
+
+
+
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;}
+.card-head{padding:10px 14px;border-bottom:0.5px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:13px;font-weight:500;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.stat{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:12px 14px;}
+.stat-label{font-size:10px;color:#888786;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+.stat-val{font-size:22px;font-weight:500;}
+.stat-bench{font-size:10px;margin-top:4px;}
+.good{color:#27500A;} .warn{color:#633806;} .bad{color:#791F1F;} .neutral{color:#888786;}
+
+.seg-ctrl{display:flex;gap:2px;background:#f5f5f4;border-radius:6px;padding:2px;}
+.seg-btn{padding:4px 12px;border-radius:5px;border:none;cursor:pointer;font-size:11px;background:transparent;color:#888786;}
+.seg-btn.active{background:#fff;color:#1a1a1a;font-weight:500;box-shadow:0 0 0 0.5px rgba(0,0,0,0.1);}
+
+/* Entry grid */
+.entry-wrap{overflow-x:auto;}
+.entry-table{width:100%;border-collapse:collapse;min-width:600px;}
+.entry-table th{padding:7px 8px;font-size:10px;font-weight:600;color:#888786;text-transform:uppercase;letter-spacing:.04em;background:#f9f9f8;border-bottom:0.5px solid rgba(0,0,0,0.08);text-align:center;white-space:nowrap;}
+.entry-table th:first-child{text-align:left;width:220px;}
+.entry-table td{padding:3px 6px;border-bottom:0.5px solid rgba(0,0,0,0.06);vertical-align:middle;}
+.entry-table td:first-child{padding:6px 8px;font-size:11px;color:#888786;}
+.entry-table tr.calc-row td{background:rgba(11,29,94,0.025);}
+.entry-table tr.calc-row td:first-child{font-weight:500;color:#1a1a1a;}
+.entry-table tr.section-head td{background:#f5f5f4;font-size:10px;font-weight:600;color:#888786;text-transform:uppercase;letter-spacing:.05em;padding:5px 8px;}
+.metric-label{display:flex;align-items:center;gap:5px;}
+.resp-tag{font-size:9px;padding:1px 5px;border-radius:8px;background:#E6F1FB;color:#0C447C;font-weight:500;white-space:nowrap;flex-shrink:0;}
+.num-input{width:100%;height:28px;border:0.5px solid rgba(0,0,0,0.12);border-radius:5px;text-align:center;font-size:12px;background:#fff;color:#1a1a1a;padding:0 4px;}
+.num-input:focus{border-color:#0b1d5e;outline:none;box-shadow:0 0 0 2px rgba(11,29,94,0.08);}
+.calc-val{text-align:center;font-size:12px;font-weight:500;color:#1a1a1a;}
+.dollar-input{position:relative;}
+.dollar-input::before{content:'$';position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:11px;color:#888786;pointer-events:none;}
+.dollar-input input{padding-left:14px !important;}
+
+/* Your view */
+.perf-table{width:100%;border-collapse:collapse;}
+.perf-table th{padding:8px 12px;font-size:10px;font-weight:600;color:#888786;text-transform:uppercase;letter-spacing:.04em;background:#f9f9f8;border-bottom:0.5px solid rgba(0,0,0,0.08);text-align:left;}
+.perf-table td{padding:9px 12px;border-bottom:0.5px solid rgba(0,0,0,0.06);font-size:12px;}
+.perf-table tr:last-child td{border-bottom:none;}
+.perf-table tr:hover td{background:#f9f9f8;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:500;}
+.badge-good{background:#EAF3DE;color:#27500A;}
+.badge-warn{background:#FAEEDA;color:#633806;}
+.badge-bad{background:#FCEBEB;color:#791F1F;}
+.badge-na{background:#f5f5f4;color:#888786;}
+
+.client-filter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;}
+.cf-btn{padding:4px 12px;border-radius:10px;border:0.5px solid rgba(0,0,0,0.1);background:transparent;color:#888786;font-size:11px;cursor:pointer;}
+.cf-btn.active{background:#0b1d5e;color:#bc9762;border-color:#0b1d5e;}
+
+.btn-primary{height:34px;padding:0 18px;border:none;border-radius:8px;background:#0b1d5e;color:#bc9762;font-size:13px;font-weight:500;cursor:pointer;}
+.btn-ghost{height:34px;padding:0 14px;border:0.5px solid rgba(0,0,0,0.12);border-radius:8px;background:transparent;color:#888786;font-size:12px;cursor:pointer;}
+.btn-ghost:hover{background:#f5f5f4;}
+
+.add-days-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:0.5px solid rgba(0,0,0,0.06);}
+.add-days-btn{display:flex;align-items:center;gap:5px;padding:6px 10px;border:0.5px dashed rgba(0,0,0,0.15);border-radius:6px;background:transparent;color:#888786;cursor:pointer;font-size:12px;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:13px;padding:10px 18px;border-radius:8px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
+
+.empty-state{padding:40px;text-align:center;color:#888786;font-size:13px;font-style:italic;}
+
+select.slim{height:30px;padding:0 8px;border:0.5px solid rgba(0,0,0,0.12);border-radius:6px;background:#fff;color:#1a1a1a;font-size:12px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">Full-Arch Authority</div>
+    <div class="hdr-sub" id="hdr-sub">Metrics Tracker</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="display:flex;background:rgba(255,255,255,0.12);border-radius:8px;padding:3px;gap:2px;">
+      <button id="tab-yours" onclick="setMainView('yours')" style="padding:5px 14px;border-radius:6px;border:none;background:#fff;color:#0b1d5e;font-size:12px;font-weight:600;cursor:pointer;">Your view</button>
+      <button id="tab-client" onclick="setMainView('client')" style="padding:5px 14px;border-radius:6px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;">Client view</button>
+      <button id="tab-trends" onclick="setMainView('trends')" style="padding:5px 14px;border-radius:6px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;">Trends</button>
+    </div>
+    <div class="hdr-right">
+      <button class="pill" onclick="safeNavigate(()=>window.open('dashboard.html','_blank'),'Dashboard')">Dashboard ↗</button>
+      <button class="pill" onclick="safeNavigate(()=>window.open('portal.html','_blank'),'Success Map')">Success Map ↗</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  
+
+  <!-- YOUR VIEW -->
+  <div id="view-yours">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="seg-ctrl">
+        <button class="seg-btn active" id="yp-weekly" onclick="setYoursPeriod('weekly')">Weekly</button>
+        <button class="seg-btn" id="yp-monthly" onclick="setYoursPeriod('monthly')">Monthly</button>
+      </div>
+    </div>
+    <div class="client-filter" id="client-filter"></div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Performance overview</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;color:#888786;">
+            <span class="badge badge-good">✓ Above</span>
+            <span class="badge badge-warn" style="margin:0 4px;">⚠ Watch</span>
+            <span class="badge badge-bad">✗ Below</span>
+          </span>
+        </div>
+      </div>
+      <div id="perf-table-wrap"><div class="empty-state">Loading client data...</div></div>
+    </div>
+  </div>
+
+  <!-- CLIENT VIEW (simulated — in production this would be the actual client portal) -->
+  <div id="view-client" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#888786;">Client:</span>
+        <select class="slim" id="client-select" onchange="loadClientData()"></select>
+        <div class="seg-ctrl">
+          <button class="seg-btn active" id="cp-daily" onclick="setPeriod('daily')">Daily</button>
+          <button class="seg-btn" id="cp-weekly" onclick="setPeriod('weekly')">Weekly</button>
+          <button class="seg-btn" id="cp-monthly" onclick="setPeriod('monthly')">Monthly</button>
+        </div>
+      </div>
+      <div id="ev-toggle" style="display:flex;background:rgba(11,29,94,0.06);border-radius:8px;padding:3px;gap:2px;">
+        <button id="ev-simple" onclick="setEntryView('simple')" style="padding:5px 12px;border-radius:6px;border:none;background:#0b1d5e;color:#bc9762;font-size:11px;font-weight:600;cursor:pointer;">Simple</button>
+        <button id="ev-table" onclick="setEntryView('table')" style="padding:5px 12px;border-radius:6px;border:none;background:transparent;color:#888786;font-size:11px;cursor:pointer;">Table</button>
+        <button id="ev-dash" onclick="setEntryView('dash')" style="padding:5px 12px;border-radius:6px;border:none;background:transparent;color:#888786;font-size:11px;cursor:pointer;">Dashboard</button>
+      </div>
+    </div>
+
+    <div id="entry-controls">
+      <div class="stat-grid" id="stat-grid"></div>
+      <div id="ev-simple-wrap" style="margin-top:14px;"></div>
+      <div id="ev-dash-wrap" style="display:none;margin-top:14px;"></div>
+    </div>
+    <div id="agg-view-wrap" style="display:none;margin-top:14px;"></div>
+
+    <div class="card" id="entry-card" style="display:none;">
+      <div class="card-head">
+        <span class="card-title" id="entry-period-label">Daily entry</span>
+        <span style="font-size:11px;color:#888786;">Rates calculate automatically</span>
+      </div>
+      <div class="entry-wrap">
+        <div id="entry-table-wrap"></div>
+      </div>
+      <div class="add-days-row">
+        <button class="add-days-btn" id="add-days-btn" onclick="addDateColumn()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add date
+        </button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span id="save-status" class="save-indicator" style="font-size:11px;color:#888786;"></span>
+          <button class="btn-ghost" onclick="loadClientData()">Reset</button>
+          <button class="btn-primary" onclick="saveEntries()">Save entries</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRENDS VIEW -->
+  <div id="view-trends" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#888786;">Client:</span>
+        <select class="slim" id="trends-client-select" onchange="renderTrends()"></select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:#888786;">Period:</span>
+        <div class="seg-ctrl">
+          <button class="seg-btn active" id="tr-weekly" onclick="setTrendsPeriod('weekly')">Weekly</button>
+          <button class="seg-btn" id="tr-monthly" onclick="setTrendsPeriod('monthly')">Monthly</button>
+        </div>
+        <span style="font-size:12px;color:#888786;margin-left:8px;">Range:</span>
+        <div class="seg-ctrl">
+          <button class="seg-btn" id="tr-3mo" onclick="setTrendsRange(3)">3mo</button>
+          <button class="seg-btn" id="tr-6mo" onclick="setTrendsRange(6)">6mo</button>
+          <button class="seg-btn active" id="tr-12mo" onclick="setTrendsRange(12)">1yr</button>
+          <button class="seg-btn" id="tr-all" onclick="setTrendsRange(0)">All</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;" id="trends-stat-row"></div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-head">
+        <span class="card-title">Lead volume & consults</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888786;"><span style="width:12px;height:3px;background:#0b1d5e;display:inline-block;border-radius:2px;"></span>Leads</span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888786;"><span style="width:12px;height:3px;background:#bc9762;display:inline-block;border-radius:2px;"></span>Consults scheduled</span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888786;"><span style="width:12px;height:3px;background:#5DCAA5;display:inline-block;border-radius:2px;border-top:2px dashed #5DCAA5;height:0;"></span>Consults on schedule</span>
+        </div>
+      </div>
+      <div style="padding:16px;"><canvas id="chart-leads" height="80"></canvas></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Conversion rates</span>
+          <div style="display:flex;gap:8px;">
+            <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:#0b1d5e;display:inline-block;"></span>Booking</span>
+            <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:#bc9762;display:inline-block;"></span>Show</span>
+            <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Close</span>
+          </div>
+        </div>
+        <div style="padding:16px;"><canvas id="chart-rates" height="120"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Revenue</span>
+          <div style="display:flex;gap:8px;">
+            <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:2px;background:#0b1d5e;display:inline-block;"></span>Marketing</span>
+            <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:2px;background:#bc9762;display:inline-block;"></span>Internal</span>
+          </div>
+        </div>
+        <div style="padding:16px;"><canvas id="chart-revenue" height="120"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Closed treatment & arches</span>
+        <div style="display:flex;gap:8px;">
+          <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:2px;background:#0b1d5e;display:inline-block;"></span>Mktg closed tx</span>
+          <span style="font-size:10px;color:#888786;display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:2px;background:#5DCAA5;display:inline-block;"></span>Total arches</span>
+        </div>
+      </div>
+      <div style="padding:16px;"><canvas id="chart-closing" height="70"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const STATE_ID='gmj_main';
+
+// ── METRICS DEFINITION — exact order matches spreadsheet ─────────────
+const METRICS=[
+  // Lead Activity (rows 3-8 in sheet)
+  {id:'leads',label:'Lead Contact Attempts',section:'Lead Activity',resp:'',hint:'"# of Leads Worked"'},
+  {id:'lead_phone_convos',label:'Lead Phone Conversations',section:'Lead Activity',resp:''},
+  {id:'consults_scheduled',label:'Consults Scheduled (regardless of when)',section:'Lead Activity',resp:''},
+  {id:'booking_rate',label:'Lead Schedule Rate',section:'Lead Activity',calc:(d)=>pct(d.consults_scheduled,d.leads),bench:{low:15,high:30},benchLabel:'Benchmark: 15–30%'},
+  {id:'rescheduled',label:'Rescheduled to a different day',section:'Lead Activity',resp:''},
+  {id:'cancelled',label:'Cancellations',section:'Lead Activity',resp:''},
+  // Show Rate (rows 9-11 in sheet)
+  {id:'consults_on_schedule',label:'Consults on the Schedule (from marketing)',section:'Show Rate',resp:''},
+  {id:'presented_treatment',label:'Presented Treatment (Held Consultations from marketing)',section:'Show Rate',resp:''},
+  {id:'show_rate',label:'Consult Show Rate',section:'Show Rate',calc:(d)=>pct(d.presented_treatment,d.consults_on_schedule),bench:{low:60},benchLabel:'Benchmark: 60%+'},
+  // Closing (rows 12-18 in sheet)
+  {id:'internal_closed_tx',label:'Internal Closed Treatment',section:'Closing',resp:'',hint:'# of pre-existing patients starting implant treatment'},
+  {id:'internal_closed_arches',label:'Internal Closed Arches',section:'Closing',resp:'',hint:'Not the # of patients'},
+  {id:'marketing_closed_tx',label:'Marketing Closed Treatment',section:'Closing',resp:'',hint:'# of 1st time patients closed from marketing, regardless of consult date'},
+  {id:'marketing_closed_arches',label:'Marketing Closed Arches',section:'Closing',resp:'',hint:'Not the # of patients'},
+  {id:'total_closed_tx',label:'Total Closed Treatment',section:'Closing',calc:(d)=>add(d.internal_closed_tx,d.marketing_closed_tx)},
+  {id:'total_closed_arches',label:'Total Closed Arches',section:'Closing',calc:(d)=>add(d.internal_closed_arches,d.marketing_closed_arches)},
+  {id:'close_rate',label:'Close Rate',section:'Closing',calc:(d)=>pct(d.marketing_closed_tx,d.presented_treatment),bench:{low:25},benchLabel:'Benchmark: 25%+'},
+  // Revenue (rows 19-21 in sheet)
+  {id:'internal_revenue',label:'Internal Closed Revenue',section:'Revenue',resp:'',dollar:true},
+  {id:'marketing_revenue',label:'Marketing Closed Revenue',section:'Revenue',resp:'',dollar:true},
+  {id:'total_revenue',label:'Total Closed Revenue',section:'Revenue',calc:(d)=>add(d.internal_revenue,d.marketing_revenue),dollar:true},
+  // Marketing ROI (monthly sheet rows 21-25)
+  {id:'marketing_spend',label:'Total Marketing Budget/Spend',section:'Marketing ROI',resp:'',dollar:true},
+  {id:'cpl',label:'Cost Per Lead (CPL)',section:'Marketing ROI',calc:(d)=>divide(d.marketing_spend,d.leads),dollar:true},
+  {id:'cost_per_consult',label:'Cost Per Consult',section:'Marketing ROI',calc:(d)=>divide(d.marketing_spend,d.consults_on_schedule),dollar:true},
+  {id:'cost_per_tx',label:'Cost Per Treatment Start',section:'Marketing ROI',calc:(d)=>divide(d.marketing_spend,d.marketing_closed_tx),dollar:true},
+  {id:'roas',label:'Return on Ad Spend (ROAS)',section:'Marketing ROI',calc:(d)=>divide(d.marketing_revenue,d.marketing_spend),roas:true},
+];
+
+const KEY_METRICS=['booking_rate','show_rate','close_rate','total_revenue'];
+const INPUT_METRICS=METRICS.filter(m=>!m.calc);
+
+// ── STATE ────────────────────────────────────────────────────────────
+let clients=[];
+let activePeriod='daily';
+let yoursPeriod='weekly';
+let activeClientFilter='all';
+let metricsData={}; // {clientId: {period: {date: {metricId: value}}}}
+let columns=[]; // date columns currently shown
+let clientResponsible={}; // {clientId: {metricId: name}}
+
+// ── MATH HELPERS ─────────────────────────────────────────────────────
+function pct(a,b){const av=parseFloat(a),bv=parseFloat(b);if(!av||!bv||bv===0)return null;return Math.round((av/bv)*100);}
+function add(a,b){const av=parseFloat(a)||0,bv=parseFloat(b)||0;return av+bv||null;}
+function divide(a,b){const av=parseFloat(a),bv=parseFloat(b);if(!av||!bv||bv===0)return null;return Math.round(av/bv);}
+function fmtVal(m,v){
+  if(v===null||v===undefined||v==='')return'—';
+  if(m.roas) return v+'x';
+  if(m.dollar) return'$'+Number(v).toLocaleString('en-US',{maximumFractionDigits:0});
+  if(m.calc&&!m.dollar&&!m.roas) return v+'%';
+  return v;
+}
+function benchClass(m,v){
+  if(!m.bench||v===null||v===undefined)return'neutral';
+  if(m.bench.high!==undefined){if(v>=m.bench.low&&v<=m.bench.high)return'good';if(v<m.bench.low)return'bad';return'warn';}
+  if(v>=m.bench.low)return'good';if(v>=m.bench.low*0.75)return'warn';return'bad';
+}
+
+// ── LOAD CLIENTS FROM APP_STATE ──────────────────────────────────────
+let activeEntryView='simple';
+function setEntryView(v){
+  activeEntryView=v;
+  localStorage.setItem('metrics_entry_view',v);
+  ['simple','table','dash'].forEach(x=>{
+    const btn=document.getElementById('ev-'+x);
+    if(btn){
+      btn.style.background=x===v?'#0b1d5e':'transparent';
+      btn.style.color=x===v?'#bc9762':'#888786';
+      btn.style.fontWeight=x===v?'600':'400';
+    }
+  });
+  const simpleWrap=document.getElementById('ev-simple-wrap');
+  const dashWrap=document.getElementById('ev-dash-wrap');
+  const entryCard=document.getElementById('entry-card');
+  if(simpleWrap) simpleWrap.style.display=v==='simple'?'block':'none';
+  if(dashWrap) dashWrap.style.display=v==='dash'?'block':'none';
+  if(entryCard) entryCard.style.display=v==='table'?'block':'none';
+  const sel=document.getElementById('client-select');
+  if(sel&&sel.value){
+    const cid=parseInt(sel.value);
+    if(v==='simple'){renderSimpleView();}
+    else if(v==='table') renderEntryTable(cid);
+    else if(v==='dash') renderDashView();
+  }
+}
+
+let simpleDate=new Date().toISOString().split('T')[0];
+
+function renderSimpleView(){
+  const wrap=document.getElementById('ev-simple-wrap');
+  if(!wrap) return;
+  const sel=document.getElementById('client-select');
+  if(!sel||!sel.value){wrap.innerHTML='';return;}
+  const clientId=parseInt(sel.value);
+  const existing=metricsData[clientId]?.[activePeriod]?.[simpleDate]||{};
+
+  const sections=[
+    {label:'Lead Activity',bg:'#E6F1FB',tc:'#0C447C',
+     metrics:['leads','lead_phone_convos','consults_scheduled','rescheduled','cancelled'],
+     calcs:['booking_rate']},
+    {label:'Show Rate',bg:'#EEEDFE',tc:'#3C3489',
+     metrics:['consults_on_schedule','presented_treatment'],
+     calcs:['show_rate']},
+    {label:'Closing',bg:'#E1F5EE',tc:'#085041',
+     metrics:['internal_closed_tx','internal_closed_arches','marketing_closed_tx','marketing_closed_arches'],
+     calcs:['total_closed_tx','total_closed_arches','close_rate']},
+    {label:'Revenue & Marketing',bg:'#FAEEDA',tc:'#633806',
+     metrics:['internal_revenue','marketing_revenue','marketing_spend'],
+     calcs:['total_revenue','cpl','cost_per_consult','cost_per_tx','roas']},
+  ];
+
+  const qs={
+    leads:'Lead contact attempts',
+    lead_phone_convos:'Lead phone conversations',
+    consults_scheduled:'Consults scheduled (regardless of when)',
+    rescheduled:'Rescheduled to a different day',
+    cancelled:'Cancellations',
+    consults_on_schedule:'Consults on the schedule (from marketing)',
+    presented_treatment:'Presented treatment (held consultations from marketing)',
+    internal_closed_tx:'Internal closed treatment',
+    internal_closed_arches:'Internal closed arches (not # of patients)',
+    marketing_closed_tx:'Marketing closed treatment',
+    marketing_closed_arches:'Marketing closed arches (not # of patients)',
+    internal_revenue:'Internal closed revenue',
+    marketing_revenue:'Marketing closed revenue',
+    marketing_spend:'Total marketing budget / spend',
+  };
+
+  // Date nav helpers
+  function shiftDate(d,days){const dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()+days);return dt.toISOString().split('T')[0];}
+  const prevDate=shiftDate(simpleDate,-1);
+  const nextDate=shiftDate(simpleDate,1);
+  const today=new Date().toISOString().split('T')[0];
+  const isToday=simpleDate===today;
+  const fullLabel=new Date(simpleDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  const dateLabel=isToday?'<span style="padding:2px 10px;border-radius:10px;border:1.5px solid #bc9762;color:#bc9762;font-size:11px;font-weight:600;letter-spacing:.02em;">Today</span> '+fullLabel:fullLabel;
+
+  const sectionsHtml=sections.map(sec=>{
+    const calcMs=(sec.calcs||[]).map(id=>METRICS.find(m=>m.id===id)).filter(Boolean);
+    const fieldsHtml=sec.metrics.map(mid=>{
+      const v=existing[mid]!==undefined?existing[mid]:'';
+      return `<div style="padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);">
+        <label style="display:block;font-size:11px;font-weight:500;color:#888786;margin-bottom:5px;">${qs[mid]||mid}</label>
+        <input type="number" id="sv-${mid}" value="${v}" placeholder="0" min="0" oninput="recalcSimple();markDirty();"
+          style="width:120px;height:40px;border:0.5px solid rgba(0,0,0,0.12);border-radius:8px;text-align:left;font-size:20px;font-weight:500;color:#1a1a1a;background:#f9f9f8;padding:0 12px;">
+      </div>`;
+    }).join('');
+
+    const calcChip=calcMs.map(cm=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:#f5f5f4;margin-top:6px;">
+      <span style="font-size:12px;color:#888786;">${cm.label}</span>
+      <span id="sv-calc-${cm.id}" style="font-size:14px;font-weight:500;color:#1a1a1a;">—</span>
+    </div>`).join('');
+
+    return `<div style="background:#fff;border:0.5px solid rgba(0,0,0,0.08);border-radius:10px;padding:14px;">
+      <div style="margin-bottom:10px;">
+        <span style="padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600;background:${sec.bg};color:${sec.tc};">${sec.label}</span>
+      </div>
+      ${fieldsHtml}
+      ${calcChip}
+    </div>`;
+  });
+
+  // Pair sections into rows of 2
+  const rows=[];
+  for(let i=0;i<sectionsHtml.length;i+=2){
+    rows.push(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">${sectionsHtml[i]}${sectionsHtml[i+1]||''}</div>`);
+  }
+  const gridHtml=rows.join('');
+
+  wrap.innerHTML=`<div style="background:var(--bg,#f5f5f4);border:0.5px solid rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;margin-bottom:10px;">
+    <div style="padding:12px 16px;border-bottom:0.5px solid rgba(0,0,0,0.08);background:#fff;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button onclick="simpleDate='${prevDate}';renderSimpleView();"
+          style="width:30px;height:30px;border:0.5px solid rgba(0,0,0,0.12);border-radius:6px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <input type="date" value="${simpleDate}" onchange="simpleDate=this.value;renderSimpleView();"
+          style="height:30px;padding:0 10px;border:0.5px solid rgba(0,0,0,0.12);border-radius:6px;font-size:13px;color:#1a1a1a;background:#fff;cursor:pointer;">
+        <button onclick="simpleDate='${nextDate}';renderSimpleView();" ${isToday?'disabled':''}
+          style="width:30px;height:30px;border:0.5px solid rgba(0,0,0,0.12);border-radius:6px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${isToday?0.3:1};">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <span style="font-size:13px;font-weight:500;color:#1a1a1a;display:flex;align-items:center;gap:6px;">${dateLabel}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="save-indicator" style="font-size:11px;color:#888786;"></span>
+        <button onclick="saveSimpleDay(simpleDate);markClean();showToast('Saved ✓');"
+          style="height:34px;padding:0 18px;border:none;border-radius:8px;background:#0b1d5e;color:#bc9762;font-size:13px;font-weight:500;cursor:pointer;">Save</button>
+      </div>
+    </div>
+    <div style="padding:12px 14px;">
+      ${gridHtml}
+    </div>
+  </div>`;
+  recalcSimple();
+}
+
+function recalcSimple(){
+  const d={};
+  INPUT_METRICS.forEach(m=>{const el=document.getElementById('sv-'+m.id);if(el)d[m.id]=parseFloat(el.value)||0;});
+  METRICS.filter(m=>m.calc).forEach(m=>{
+    const el=document.getElementById('sv-calc-'+m.id);
+    if(el){
+      const v=m.calc(d);
+      el.textContent=fmtVal(m,v);
+      const bc=benchClass(m,v);
+      el.style.color=bc==='good'?'#27500A':bc==='warn'?'#633806':bc==='bad'?'#791F1F':'#1a1a1a';
+    }
+  });
+}
+
+function saveSimpleDay(dateKey){
+  const sel=document.getElementById('client-select');
+  if(!sel||!sel.value) return;
+  const clientId=parseInt(sel.value);
+  if(!metricsData[clientId]) metricsData[clientId]={};
+  if(!metricsData[clientId][activePeriod]) metricsData[clientId][activePeriod]={};
+  const existing=metricsData[clientId][activePeriod][dateKey]||{};
+  INPUT_METRICS.forEach(m=>{const el=document.getElementById('sv-'+m.id);if(el&&el.value!=='')existing[m.id]=parseFloat(el.value)||0;});
+  metricsData[clientId][activePeriod][dateKey]=existing;
+  const client=clients.find(c=>c.id===clientId);
+  fetch(`${SUPABASE_URL}/rest/v1/metrics_tracker`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({client_id:clientId,client_name:client?.name||'',period:activePeriod,date_key:dateKey,data:existing,responsible:clientResponsible[clientId]||{},updated_at:new Date().toISOString()})
+  }).catch(e=>console.warn(e));
+  // Backup to Google Sheet (fire and forget)
+  syncToSheet(clientId, dateKey, existing);
+  markClean();
+  renderStatGrid(clientId);
+}
+
+function renderDashView(){
+  const wrap=document.getElementById('ev-dash-wrap');
+  if(!wrap) return;
+  const sel=document.getElementById('client-select');
+  if(!sel||!sel.value){wrap.innerHTML='';return;}
+  const clientId=parseInt(sel.value);
+  const existing=metricsData[clientId]?.[activePeriod]||{};
+  const agg={};
+  Object.values(existing).forEach(d=>{INPUT_METRICS.forEach(m=>{if(d[m.id]!==undefined)agg[m.id]=(agg[m.id]||0)+(parseFloat(d[m.id])||0);});});
+  METRICS.forEach(m=>{if(m.calc)agg[m.id]=m.calc(agg);});
+  
+  const keyMetrics=METRICS.filter(m=>m.bench);
+  wrap.innerHTML=`<div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;margin-bottom:10px;">
+    <div style="padding:12px 14px;border-bottom:0.5px solid rgba(0,0,0,0.08);font-size:13px;font-weight:500;">Performance — ${activePeriod} view</div>
+    <div style="padding:12px;">
+      ${keyMetrics.map(m=>{
+        const v=agg[m.id];const bc=benchClass(m,v);
+        const pct=v===null?0:m.bench.high?Math.min(100,Math.round(v/m.bench.high*100)):Math.min(100,Math.round(v/m.bench.low*100));
+        const barColor=bc==='good'?'#22c55e':bc==='warn'?'#f59e0b':'#ef4444';
+        return`<div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <span style="font-size:12px;color:#888786;">${m.label}</span>
+            <span style="font-size:14px;font-weight:500;color:${bc==='good'?'#27500A':bc==='warn'?'#633806':'#791F1F'}">${fmtVal(m,v)}</span>
+          </div>
+          <div style="height:6px;background:#f5f5f4;border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .4s;"></div>
+          </div>
+          <div style="font-size:10px;color:#888786;margin-top:3px;">${m.benchLabel||''}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+const SAMPLE_CLIENTS_FALLBACK=[
+  {id:0,name:"4M Dental Implant Center",ci:0},
+  {id:1,name:"Aesthetic Oral Arts",ci:1},
+  {id:2,name:"Capital Dental",ci:2},
+  {id:3,name:"Dynamic Services Dental Group",ci:3},
+  {id:4,name:"Jeffrey S. Burns",ci:4},
+  {id:5,name:"New Smile Now",ci:5},
+  {id:6,name:"SWOSA",ci:6},
+  {id:7,name:"Texas Sedation Dentistry",ci:7},
+  {id:8,name:"Wolf Dental Wellness",ci:8},
+];
+
+async function loadClients(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/app_state?id=eq.${STATE_ID}&select=data`,{
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    const rows=await res.json();
+    if(rows&&rows.length&&rows[0].data&&rows[0].data.clients){
+      clients=rows[0].data.clients;
+      document.getElementById('hdr-sub').textContent='Metrics Tracker · '+clients.length+' clients';
+      // Pull backup sheet URLs from client profiles (stored in info.backupSheetUrl)
+      clients.forEach(c=>{
+        if(c.info?.backupSheetUrl) sheetUrls[c.id]=c.info.backupSheetUrl;
+      });
+    } else {
+      clients=SAMPLE_CLIENTS_FALLBACK;
+    }
+  }catch(e){
+    console.warn('Could not load clients:',e);
+    clients=SAMPLE_CLIENTS_FALLBACK;
+  }
+  loadMetricsData();
+}
+
+// ── LOAD/SAVE METRICS DATA ───────────────────────────────────────────
+async function loadMetricsData(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/metrics_tracker?select=*`,{
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length){
+      rows.forEach(r=>{
+        if(!metricsData[r.client_id]) metricsData[r.client_id]={};
+        if(!metricsData[r.client_id][r.period]) metricsData[r.client_id][r.period]={};
+        metricsData[r.client_id][r.period][r.date_key]=r.data||{};
+        if(r.responsible) clientResponsible[r.client_id]=r.responsible;
+      });
+    } else {
+      // No real data yet — load sample data
+      SAMPLE_DATA.forEach(r=>{
+        if(!metricsData[r.client_id]) metricsData[r.client_id]={};
+        if(!metricsData[r.client_id][r.period]) metricsData[r.client_id][r.period]={};
+        metricsData[r.client_id][r.period][r.date_key]=r.data||{};
+        if(r.responsible) clientResponsible[r.client_id]=r.responsible;
+      });
+    }
+  }catch(e){
+    console.warn('Could not load metrics, using sample data:',e);
+    SAMPLE_DATA.forEach(r=>{
+      if(!metricsData[r.client_id]) metricsData[r.client_id]={};
+      if(!metricsData[r.client_id][r.period]) metricsData[r.client_id][r.period]={};
+      metricsData[r.client_id][r.period][r.date_key]=r.data||{};
+      if(r.responsible) clientResponsible[r.client_id]=r.responsible;
+    });
+  }
+  initUI();
+}
+
+async function saveEntries(silent=false){
+  const sel=document.getElementById('client-select');
+  if(!sel||!sel.value)return;
+  const clientId=parseInt(sel.value);
+  const client=clients.find(c=>c.id===clientId);
+  if(!client)return;
+
+  const rows=[];
+  columns.forEach(col=>{
+    const data={};
+    let hasData=false;
+    INPUT_METRICS.forEach(m=>{
+      const el=document.getElementById(`inp-${m.id}-${col}`);
+      if(el&&el.value!==''){data[m.id]=parseFloat(el.value)||0;hasData=true;}
+    });
+    if(hasData){
+      rows.push({
+        client_id:clientId,
+        client_name:client.name,
+        period:activePeriod,
+        date_key:col,
+        data,
+        responsible:clientResponsible[clientId]||{},
+        updated_at:new Date().toISOString()
+      });
+    }
+  });
+
+  if(!rows.length){showToast('No data to save');return;}
+
+  try{
+    for(const row of rows){
+      await fetch(`${SUPABASE_URL}/rest/v1/metrics_tracker`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify(row)
+      });
+      if(!metricsData[clientId]) metricsData[clientId]={};
+      if(!metricsData[clientId][activePeriod]) metricsData[clientId][activePeriod]={};
+      metricsData[clientId][activePeriod][row.date_key]=row.data;
+      // Backup to Google Sheet (fire and forget — never blocks save)
+      syncToSheet(clientId, row.date_key, row.data);
+    }
+    if(!silent) showToast('Entries saved ✓');
+    markClean();
+    document.getElementById('save-status').textContent='Saved '+new Date().toLocaleTimeString();
+  }catch(e){showToast('Save failed — check connection');console.error(e);}
+}
+
+// ── INIT UI ──────────────────────────────────────────────────────────
+function initUI(){
+  populateClientSelect();
+  populateTrendsClientSelect();
+  renderClientFilter();
+  renderYoursView();
+  loadClientData();
+}
+
+function populateClientSelect(){
+  const sel=document.getElementById('client-select');
+  sel.innerHTML=clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function renderClientFilter(){
+  const wrap=document.getElementById('client-filter');
+  wrap.innerHTML=`<button class="cf-btn active" onclick="setClientFilter('all',this)">All clients</button>`+
+    clients.map(c=>`<button class="cf-btn" onclick="setClientFilter('${c.id}',this)">${c.name}</button>`).join('');
+}
+
+function setClientFilter(id,btn){
+  activeClientFilter=id;
+  document.querySelectorAll('.cf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderYoursView();
+}
+
+// ── PERIOD HELPERS ───────────────────────────────────────────────────
+function getDefaultColumns(period){
+  const today=new Date();
+  const cols=[];
+  if(period==='daily'){
+    for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);cols.push(d.toISOString().split('T')[0]);}
+  } else if(period==='weekly'){
+    for(let i=7;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i*7);const s=d.toISOString().split('T')[0];cols.push(s);}
+  } else {
+    for(let i=11;i>=0;i--){const d=new Date(today.getFullYear(),today.getMonth()-i,1);cols.push(d.toISOString().slice(0,7));}
+  }
+  return cols;
+}
+
+function fmtColLabel(col,period){
+  if(period==='monthly'){const[y,m]=col.split('-');return new Date(y,m-1,1).toLocaleString('default',{month:'short',year:'2-digit'});}
+  if(period==='weekly'){const d=new Date(col+'T12:00:00');return'Wk '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+  const d=new Date(col+'T12:00:00');return d.toLocaleDateString('en-US',{weekday:'short',month:'numeric',day:'numeric'});
+}
+
+// ── CLIENT ENTRY VIEW ────────────────────────────────────────────────
+function loadClientData(){
+  const sel=document.getElementById('client-select');
+  if(!sel||!sel.value)return;
+  const clientId=parseInt(sel.value);
+  columns=getDefaultColumns(activePeriod);
+  // Merge any existing data columns
+  const existing=metricsData[clientId]?.[activePeriod]||{};
+  Object.keys(existing).forEach(k=>{if(!columns.includes(k))columns.push(k);});
+  columns.sort();
+  renderStatGrid(clientId);
+  if(activeEntryView==='table') renderEntryTable(clientId);
+  else if(activeEntryView==='simple') renderSimpleView();
+  else if(activeEntryView==='dash') renderDashView();
+}
+
+function renderStatGrid(clientId){
+  const wrap=document.getElementById('stat-grid');
+  // Always aggregate from daily — stat cards show totals for the full dataset
+  const existing=metricsData[clientId]?.['daily']||{};
+  const agg={};
+  Object.values(existing).forEach(d=>{
+    INPUT_METRICS.forEach(m=>{if(d[m.id]!==undefined)agg[m.id]=(agg[m.id]||0)+(parseFloat(d[m.id])||0);});
+  });
+  METRICS.forEach(m=>{if(m.calc)agg[m.id]=m.calc(agg);});
+  const statsToShow=KEY_METRICS.map(id=>METRICS.find(m=>m.id===id)).filter(Boolean);
+  wrap.innerHTML=statsToShow.map(m=>{
+    const v=agg[m.id];
+    const bc=benchClass(m,v);
+    return`<div class="stat">
+      <div class="stat-label">${m.label}</div>
+      <div class="stat-val ${bc}">${fmtVal(m,v)}</div>
+      <div class="stat-bench ${bc}">${m.benchLabel||'This period'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderEntryTable(clientId){
+  const wrap=document.getElementById('entry-table-wrap');
+  const existing=metricsData[clientId]?.[activePeriod]||{};
+  const resp=clientResponsible[clientId]||{};
+  document.getElementById('entry-period-label').textContent=
+    activePeriod.charAt(0).toUpperCase()+activePeriod.slice(1)+' entry';
+
+  const visibleCols=columns.slice(-7); // show last 7
+
+  let html=`<table class="entry-table"><thead><tr>
+    <th>Metric</th>
+    ${visibleCols.map(c=>`<th>${fmtColLabel(c,activePeriod)}</th>`).join('')}
+  </tr></thead><tbody>`;
+
+  let lastSection='';
+  METRICS.forEach(m=>{
+    if(m.section!==lastSection){
+      lastSection=m.section;
+      html+=`<tr class="section-head"><td colspan="${visibleCols.length+1}">${m.section}</td></tr>`;
+    }
+    const isCalc=!!m.calc;
+    const respName=resp[m.id]||m.resp||'';
+    html+=`<tr class="${isCalc?'calc-row':''}"><td>
+      <div class="metric-label">
+        ${m.label}${respName?`<span class="resp-tag">${respName}</span>`:''}
+      </div>
+    </td>`;
+    visibleCols.forEach(col=>{
+      if(isCalc){
+        const colData={};
+        INPUT_METRICS.forEach(im=>{
+          const el=document.getElementById(`inp-${im.id}-${col}`);
+          colData[im.id]=el?parseFloat(el.value)||0:(existing[col]?.[im.id]||0);
+        });
+        const v=m.calc(colData);
+        html+=`<td><div class="calc-val" id="calc-${m.id}-${col}">${fmtVal(m,v)}</div></td>`;
+      } else {
+        const val=existing[col]?.[m.id]||'';
+        const inputClass=m.dollar?'num-input dollar-val':'num-input';
+        html+=`<td><input type="number" class="${inputClass}" id="inp-${m.id}-${col}" value="${val}" placeholder="0" oninput="recalcCol('${col}');markDirty();"></td>`;
+      }
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table>`;
+  wrap.innerHTML=html;
+}
+
+function recalcCol(col){
+  const colData={};
+  INPUT_METRICS.forEach(m=>{
+    const el=document.getElementById(`inp-${m.id}-${col}`);
+    colData[m.id]=el?parseFloat(el.value)||0:0;
+  });
+  METRICS.filter(m=>m.calc).forEach(m=>{
+    const el=document.getElementById(`calc-${m.id}-${col}`);
+    if(el){const v=m.calc(colData);el.textContent=fmtVal(m,v);}
+  });
+  // Update stat cards
+  const sel=document.getElementById('client-select');
+  if(sel&&sel.value) renderStatGrid(parseInt(sel.value));
+}
+
+function addDateColumn(){
+  const today=new Date();
+  let newCol;
+  if(activePeriod==='monthly'){
+    const lastCol=columns[columns.length-1]||today.toISOString().slice(0,7);
+    const[y,m]=lastCol.split('-');
+    const next=new Date(parseInt(y),parseInt(m),1);
+    newCol=next.toISOString().slice(0,7);
+  } else if(activePeriod==='weekly'){
+    const lastCol=columns[columns.length-1]||today.toISOString().split('T')[0];
+    const d=new Date(lastCol+'T12:00:00');d.setDate(d.getDate()+7);
+    newCol=d.toISOString().split('T')[0];
+  } else {
+    const lastCol=columns[columns.length-1]||today.toISOString().split('T')[0];
+    const d=new Date(lastCol+'T12:00:00');d.setDate(d.getDate()+1);
+    newCol=d.toISOString().split('T')[0];
+  }
+  if(!columns.includes(newCol)){columns.push(newCol);loadClientData();}
+}
+
+// ── YOUR VIEW ────────────────────────────────────────────────────────
+function renderYoursView(){
+  const wrap=document.getElementById('perf-table-wrap');
+  if(!clients.length){wrap.innerHTML='<div class="empty-state">Loading...</div>';return;}
+  const filtered=activeClientFilter==='all'?clients:clients.filter(c=>c.id==activeClientFilter);
+
+  // For "this period" — last N weeks/months of daily data
+  const cutoff=new Date();
+  if(yoursPeriod==='weekly') cutoff.setDate(cutoff.getDate()-7);
+  else cutoff.setMonth(cutoff.getMonth()-1);
+  const cutStr=cutoff.toISOString().split('T')[0];
+
+  let html=`<table class="perf-table"><thead><tr>
+    <th>Client</th>
+    <th>Booking rate</th>
+    <th>Show rate</th>
+    <th>Close rate</th>
+    <th>Total revenue</th>
+    <th>Last entry</th>
+  </tr></thead><tbody>`;
+
+  filtered.forEach(c=>{
+    // Always aggregate from daily — filter by current period window
+    const daily=metricsData[c.id]?.['daily']||{};
+    const allDates=Object.keys(daily).sort();
+    const periodDates=allDates.filter(d=>d>=cutStr);
+    const agg={};
+    (periodDates.length?periodDates:allDates).forEach(dk=>{
+      const d=daily[dk]||{};
+      INPUT_METRICS.forEach(m=>{if(d[m.id]!==undefined)agg[m.id]=(agg[m.id]||0)+(parseFloat(d[m.id])||0);});
+    });
+    METRICS.forEach(m=>{if(m.calc)agg[m.id]=m.calc(agg);});
+    const br=agg.booking_rate,sr=agg.show_rate,cr=agg.close_rate,rev=agg.total_revenue;
+    const noData=!allDates.length;
+    const lastDate=allDates.length?fmtColLabel(allDates[allDates.length-1],'daily'):'—';
+
+    html+=`<tr>
+      <td style="font-weight:500;">${c.name}</td>
+      <td>${noData?'<span style="color:#888786;font-style:italic;">No data</span>':badge('booking_rate',br)}</td>
+      <td>${noData?'':badge('show_rate',sr)}</td>
+      <td>${noData?'':badge('close_rate',cr)}</td>
+      <td style="font-weight:500;">${noData?'—':fmtVal(METRICS.find(m=>m.id==='total_revenue'),rev)}</td>
+      <td style="color:#888786;">${lastDate}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  wrap.innerHTML=html;
+}
+
+function badge(metricId,v){
+  const m=METRICS.find(x=>x.id===metricId);
+  if(!m)return'—';
+  const bc=benchClass(m,v);
+  const symbol=bc==='good'?'✓':bc==='warn'?'⚠':'✗';
+  return`<span class="badge badge-${bc}">${symbol} ${fmtVal(m,v)}</span>`;
+}
+
+// ── VIEW SWITCHERS ───────────────────────────────────────────────────
+function _doSetMainView(v){
+  ['yours','client','trends'].forEach(x=>{
+    const el=document.getElementById('view-'+x);
+    if(el) el.style.display=x===v?'block':'none';
+    const btn=document.getElementById('tab-'+x);
+    if(btn){btn.style.background=x===v?'#fff':'transparent';btn.style.color=x===v?'#0b1d5e':'rgba(255,255,255,0.7)';btn.style.fontWeight=x===v?'600':'400';}
+  });
+  localStorage.setItem('metrics_view',v);
+  if(v==='trends') renderTrends();
+}
+function setMainView(v){
+  // Only prompt if switching away from client entry view with unsaved changes
+  const currentView=localStorage.getItem('metrics_view')||'yours';
+  if(isDirty && currentView==='client' && v!=='client'){
+    safeNavigate(()=>_doSetMainView(v), null);
+  } else {
+    _doSetMainView(v);
+  }
+}
+
+function setPeriod(p){
+  activePeriod=p;
+  ['daily','weekly','monthly'].forEach(x=>{
+    document.getElementById('cp-'+x)?.classList.toggle('active',x===p);
+  });
+  // Daily = entry mode. Weekly/Monthly = read-only aggregated view
+  const entryControls=document.getElementById('entry-controls');
+  const aggWrap=document.getElementById('agg-view-wrap');
+  const evToggle=document.getElementById('ev-toggle');
+  if(p==='daily'){
+    if(entryControls) entryControls.style.display='flex';
+    if(aggWrap) aggWrap.style.display='none';
+    if(evToggle) evToggle.style.display='flex';
+    loadClientData();
+  } else {
+    if(entryControls) entryControls.style.display='none';
+    if(aggWrap) aggWrap.style.display='block';
+    if(evToggle) evToggle.style.display='none';
+    renderAggView(p);
+  }
+}
+
+function setYoursPeriod(p){
+  yoursPeriod=p;
+  ['weekly','monthly'].forEach(x=>{
+    document.getElementById('yp-'+x)?.classList.toggle('active',x===p);
+  });
+  renderYoursView();
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500);
+}
+
+// ── SAMPLE DATA ──────────────────────────────────────────────────────
+const SAMPLE_DATA = [{"client_id": 0, "client_name": "4M Dental Implant Center", "period": "daily", "date_key": "2026-04-17", "data": {"leads": 14, "consults_scheduled": 4, "consults_on_schedule": 3, "rescheduled": 2, "cancelled": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 239}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867797"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "daily", "date_key": "2026-04-20", "data": {"leads": 14, "consults_scheduled": 5, "consults_on_schedule": 4, "rescheduled": 2, "cancelled": 0, "presented_treatment": 2, "internal_closed_tx": 1, "internal_closed_arches": 1, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 15405, "marketing_revenue": 0, "marketing_spend": 324}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867807"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "daily", "date_key": "2026-04-21", "data": {"leads": 13, "consults_scheduled": 5, "consults_on_schedule": 4, "rescheduled": 1, "cancelled": 1, "presented_treatment": 3, "internal_closed_tx": 1, "internal_closed_arches": 2, "marketing_closed_tx": 1, "marketing_closed_arches": 2, "internal_revenue": 15891, "marketing_revenue": 17539, "marketing_spend": 341}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867809"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "daily", "date_key": "2026-04-22", "data": {"leads": 14, "consults_scheduled": 3, "consults_on_schedule": 2, "rescheduled": 1, "cancelled": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 291}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867811"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "daily", "date_key": "2026-04-23", "data": {"leads": 14, "consults_scheduled": 3, "consults_on_schedule": 2, "rescheduled": 1, "cancelled": 0, "presented_treatment": 1, "internal_closed_tx": 1, "internal_closed_arches": 2, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 21524, "marketing_revenue": 0, "marketing_spend": 311}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867812"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "monthly", "date_key": "2025-11", "data": {"leads": 264, "consults_scheduled": 85, "consults_on_schedule": 77, "rescheduled": 26, "cancelled": 2, "presented_treatment": 50, "internal_closed_tx": 5, "internal_closed_arches": 10, "marketing_closed_tx": 19, "marketing_closed_arches": 38, "internal_revenue": 83508, "marketing_revenue": 304589, "marketing_spend": 5021}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867814"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "monthly", "date_key": "2025-12", "data": {"leads": 205, "consults_scheduled": 58, "consults_on_schedule": 49, "rescheduled": 14, "cancelled": 1, "presented_treatment": 32, "internal_closed_tx": 5, "internal_closed_arches": 5, "marketing_closed_tx": 10, "marketing_closed_arches": 10, "internal_revenue": 101096, "marketing_revenue": 212480, "marketing_spend": 3133}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867816"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "monthly", "date_key": "2026-01", "data": {"leads": 240, "consults_scheduled": 83, "consults_on_schedule": 72, "rescheduled": 14, "cancelled": 4, "presented_treatment": 55, "internal_closed_tx": 3, "internal_closed_arches": 3, "marketing_closed_tx": 18, "marketing_closed_arches": 18, "internal_revenue": 62819, "marketing_revenue": 285952, "marketing_spend": 6517}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867817"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "monthly", "date_key": "2026-03", "data": {"leads": 212, "consults_scheduled": 74, "consults_on_schedule": 63, "rescheduled": 21, "cancelled": 3, "presented_treatment": 40, "internal_closed_tx": 4, "internal_closed_arches": 4, "marketing_closed_tx": 17, "marketing_closed_arches": 34, "internal_revenue": 67666, "marketing_revenue": 359681, "marketing_spend": 4100}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867819"}, {"client_id": 0, "client_name": "4M Dental Implant Center", "period": "monthly", "date_key": "2026-04", "data": {"leads": 222, "consults_scheduled": 80, "consults_on_schedule": 74, "rescheduled": 22, "cancelled": 5, "presented_treatment": 50, "internal_closed_tx": 3, "internal_closed_arches": 6, "marketing_closed_tx": 21, "marketing_closed_arches": 21, "internal_revenue": 60674, "marketing_revenue": 380453, "marketing_spend": 4086}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.867820"}, {"client_id": 2, "client_name": "Capital Dental", "period": "daily", "date_key": "2026-04-17", "data": {"leads": 8, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 154}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868044"}, {"client_id": 2, "client_name": "Capital Dental", "period": "daily", "date_key": "2026-04-20", "data": {"leads": 10, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 237}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868045"}, {"client_id": 2, "client_name": "Capital Dental", "period": "daily", "date_key": "2026-04-21", "data": {"leads": 11, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 1, "internal_closed_arches": 1, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 16443, "marketing_revenue": 0, "marketing_spend": 209}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868046"}, {"client_id": 2, "client_name": "Capital Dental", "period": "daily", "date_key": "2026-04-22", "data": {"leads": 8, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 337}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868048"}, {"client_id": 2, "client_name": "Capital Dental", "period": "daily", "date_key": "2026-04-23", "data": {"leads": 10, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 276}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868049"}, {"client_id": 2, "client_name": "Capital Dental", "period": "monthly", "date_key": "2025-11", "data": {"leads": 185, "consults_scheduled": 46, "consults_on_schedule": 39, "rescheduled": 17, "cancelled": 5, "presented_treatment": 21, "internal_closed_tx": 3, "internal_closed_arches": 6, "marketing_closed_tx": 4, "marketing_closed_arches": 4, "internal_revenue": 54565, "marketing_revenue": 73682, "marketing_spend": 3716}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868051"}, {"client_id": 2, "client_name": "Capital Dental", "period": "monthly", "date_key": "2025-12", "data": {"leads": 198, "consults_scheduled": 37, "consults_on_schedule": 32, "rescheduled": 12, "cancelled": 4, "presented_treatment": 17, "internal_closed_tx": 5, "internal_closed_arches": 10, "marketing_closed_tx": 4, "marketing_closed_arches": 8, "internal_revenue": 100688, "marketing_revenue": 83445, "marketing_spend": 7732}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868052"}, {"client_id": 2, "client_name": "Capital Dental", "period": "monthly", "date_key": "2026-01", "data": {"leads": 224, "consults_scheduled": 49, "consults_on_schedule": 42, "rescheduled": 19, "cancelled": 4, "presented_treatment": 22, "internal_closed_tx": 3, "internal_closed_arches": 6, "marketing_closed_tx": 4, "marketing_closed_arches": 4, "internal_revenue": 55628, "marketing_revenue": 72681, "marketing_spend": 5850}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868053"}, {"client_id": 2, "client_name": "Capital Dental", "period": "monthly", "date_key": "2026-03", "data": {"leads": 224, "consults_scheduled": 48, "consults_on_schedule": 46, "rescheduled": 24, "cancelled": 2, "presented_treatment": 22, "internal_closed_tx": 2, "internal_closed_arches": 4, "marketing_closed_tx": 5, "marketing_closed_arches": 10, "internal_revenue": 36471, "marketing_revenue": 101976, "marketing_spend": 3504}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868057"}, {"client_id": 2, "client_name": "Capital Dental", "period": "monthly", "date_key": "2026-04", "data": {"leads": 223, "consults_scheduled": 49, "consults_on_schedule": 47, "rescheduled": 19, "cancelled": 1, "presented_treatment": 25, "internal_closed_tx": 5, "internal_closed_arches": 5, "marketing_closed_tx": 5, "marketing_closed_arches": 5, "internal_revenue": 94089, "marketing_revenue": 98273, "marketing_spend": 6950}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868058"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "daily", "date_key": "2026-04-17", "data": {"leads": 12, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 1, "internal_closed_arches": 1, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 21411, "marketing_revenue": 0, "marketing_spend": 297}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868178"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "daily", "date_key": "2026-04-20", "data": {"leads": 17, "consults_scheduled": 4, "consults_on_schedule": 3, "rescheduled": 1, "cancelled": 0, "presented_treatment": 2, "internal_closed_tx": 1, "internal_closed_arches": 2, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 21736, "marketing_revenue": 0, "marketing_spend": 333}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868180"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "daily", "date_key": "2026-04-21", "data": {"leads": 12, "consults_scheduled": 3, "consults_on_schedule": 2, "rescheduled": 2, "cancelled": 0, "presented_treatment": 0, "internal_closed_tx": 1, "internal_closed_arches": 2, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 16545, "marketing_revenue": 0, "marketing_spend": 223}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868183"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "daily", "date_key": "2026-04-22", "data": {"leads": 13, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 226}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868185"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "daily", "date_key": "2026-04-23", "data": {"leads": 13, "consults_scheduled": 2, "consults_on_schedule": 1, "rescheduled": 1, "cancelled": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 182}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868186"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "monthly", "date_key": "2025-11", "data": {"leads": 332, "consults_scheduled": 89, "consults_on_schedule": 81, "rescheduled": 30, "cancelled": 1, "presented_treatment": 49, "internal_closed_tx": 2, "internal_closed_arches": 2, "marketing_closed_tx": 12, "marketing_closed_arches": 12, "internal_revenue": 31941, "marketing_revenue": 244549, "marketing_spend": 7406}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868187"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "monthly", "date_key": "2025-12", "data": {"leads": 317, "consults_scheduled": 93, "consults_on_schedule": 91, "rescheduled": 36, "cancelled": 1, "presented_treatment": 54, "internal_closed_tx": 3, "internal_closed_arches": 3, "marketing_closed_tx": 13, "marketing_closed_arches": 26, "internal_revenue": 54616, "marketing_revenue": 266141, "marketing_spend": 3385}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868189"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "monthly", "date_key": "2026-01", "data": {"leads": 268, "consults_scheduled": 64, "consults_on_schedule": 60, "rescheduled": 18, "cancelled": 5, "presented_treatment": 42, "internal_closed_tx": 3, "internal_closed_arches": 3, "marketing_closed_tx": 14, "marketing_closed_arches": 28, "internal_revenue": 51395, "marketing_revenue": 257573, "marketing_spend": 6787}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868192"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "monthly", "date_key": "2026-03", "data": {"leads": 276, "consults_scheduled": 79, "consults_on_schedule": 69, "rescheduled": 13, "cancelled": 5, "presented_treatment": 55, "internal_closed_tx": 5, "internal_closed_arches": 10, "marketing_closed_tx": 15, "marketing_closed_arches": 15, "internal_revenue": 103416, "marketing_revenue": 311129, "marketing_spend": 7814}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868193"}, {"client_id": 3, "client_name": "Dynamic Services Dental Group", "period": "monthly", "date_key": "2026-04", "data": {"leads": 273, "consults_scheduled": 82, "consults_on_schedule": 72, "rescheduled": 15, "cancelled": 5, "presented_treatment": 55, "internal_closed_tx": 3, "internal_closed_arches": 6, "marketing_closed_tx": 18, "marketing_closed_arches": 36, "internal_revenue": 50436, "marketing_revenue": 295683, "marketing_spend": 7432}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868194"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "daily", "date_key": "2026-04-17", "data": {"leads": 5, "consults_scheduled": 0, "consults_on_schedule": 0, "rescheduled": 0, "cancelled": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 230}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868291"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "daily", "date_key": "2026-04-20", "data": {"leads": 7, "consults_scheduled": 1, "consults_on_schedule": 0, "rescheduled": 0, "cancelled": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 231}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868293"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "daily", "date_key": "2026-04-21", "data": {"leads": 5, "consults_scheduled": 0, "consults_on_schedule": 0, "rescheduled": 0, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 201}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868294"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "daily", "date_key": "2026-04-22", "data": {"leads": 7, "consults_scheduled": 1, "consults_on_schedule": 0, "rescheduled": 0, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 1, "internal_closed_arches": 2, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 22125, "marketing_revenue": 0, "marketing_spend": 251}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868295"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "daily", "date_key": "2026-04-23", "data": {"leads": 7, "consults_scheduled": 1, "consults_on_schedule": 0, "rescheduled": 0, "cancelled": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0, "marketing_spend": 157}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868297"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "monthly", "date_key": "2025-11", "data": {"leads": 130, "consults_scheduled": 27, "consults_on_schedule": 25, "rescheduled": 11, "cancelled": 2, "presented_treatment": 14, "internal_closed_tx": 5, "internal_closed_arches": 10, "marketing_closed_tx": 2, "marketing_closed_arches": 2, "internal_revenue": 79368, "marketing_revenue": 32693, "marketing_spend": 3695}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868298"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "monthly", "date_key": "2025-12", "data": {"leads": 109, "consults_scheduled": 21, "consults_on_schedule": 20, "rescheduled": 5, "cancelled": 4, "presented_treatment": 13, "internal_closed_tx": 5, "internal_closed_arches": 5, "marketing_closed_tx": 2, "marketing_closed_arches": 4, "internal_revenue": 88875, "marketing_revenue": 37067, "marketing_spend": 7062}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868299"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "monthly", "date_key": "2026-01", "data": {"leads": 128, "consults_scheduled": 25, "consults_on_schedule": 23, "rescheduled": 9, "cancelled": 2, "presented_treatment": 12, "internal_closed_tx": 4, "internal_closed_arches": 4, "marketing_closed_tx": 3, "marketing_closed_arches": 3, "internal_revenue": 75121, "marketing_revenue": 53481, "marketing_spend": 6815}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868300"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "monthly", "date_key": "2026-03", "data": {"leads": 123, "consults_scheduled": 23, "consults_on_schedule": 22, "rescheduled": 7, "cancelled": 3, "presented_treatment": 13, "internal_closed_tx": 4, "internal_closed_arches": 4, "marketing_closed_tx": 3, "marketing_closed_arches": 3, "internal_revenue": 78818, "marketing_revenue": 58529, "marketing_spend": 7182}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868302"}, {"client_id": 4, "client_name": "Jeffrey S. Burns", "period": "monthly", "date_key": "2026-04", "data": {"leads": 133, "consults_scheduled": 28, "consults_on_schedule": 24, "rescheduled": 9, "cancelled": 3, "presented_treatment": 12, "internal_closed_tx": 4, "internal_closed_arches": 4, "marketing_closed_tx": 3, "marketing_closed_arches": 6, "internal_revenue": 63129, "marketing_revenue": 50858, "marketing_spend": 7204}, "responsible": {"internal_closed_tx": "TC", "marketing_closed_tx": "TC"}, "updated_at": "2026-04-23T17:02:06.868303"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-05", "data": {"marketing_closed_tx": 1, "marketing_revenue": 329}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163159"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-06", "data": {"leads": 19, "lead_phone_convos": 10, "consults_scheduled": 9, "rescheduled": 2, "cancelled": 1, "consults_on_schedule": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163175"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-07", "data": {"leads": 3, "lead_phone_convos": 0, "consults_scheduled": 0, "consults_on_schedule": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163179"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-08", "data": {"leads": 2, "consults_on_schedule": 3, "presented_treatment": 2, "marketing_closed_tx": 1, "marketing_closed_arches": 2, "marketing_revenue": 52000}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163184"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-12", "data": {"leads": 1, "lead_phone_convos": 1, "consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163186"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-13", "data": {"leads": 0, "cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 1, "marketing_closed_tx": 1, "marketing_closed_arches": 2, "marketing_revenue": 52000}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163190"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-15", "data": {"leads": 5, "lead_phone_convos": 2, "marketing_closed_tx": 1, "marketing_revenue": 329}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163193"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-19", "data": {"leads": 0, "lead_phone_convos": 0, "consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163196"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-20", "data": {"consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163198"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-22", "data": {"leads": 11, "lead_phone_convos": 1, "consults_scheduled": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163200"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-27", "data": {"leads": 12, "lead_phone_convos": 6, "consults_scheduled": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163203"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-28", "data": {"leads": 1, "lead_phone_convos": 1, "consults_scheduled": 1, "rescheduled": 1, "consults_on_schedule": 5, "presented_treatment": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163206"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-02", "data": {"leads": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163208"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-03", "data": {"leads": 2, "lead_phone_convos": 0, "consults_scheduled": 2, "rescheduled": 1, "consults_on_schedule": 1, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163211"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-04", "data": {"leads": 1, "consults_scheduled": 1, "rescheduled": 1, "cancelled": 2, "consults_on_schedule": 3, "presented_treatment": 1, "marketing_closed_tx": 1, "marketing_revenue": 450}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163215"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-05", "data": {"leads": 2, "lead_phone_convos": 1, "consults_scheduled": 1, "consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163218"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-10", "data": {"rescheduled": 1, "consults_on_schedule": 2, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163220"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-11", "data": {"cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 1, "marketing_closed_tx": 1, "marketing_closed_arches": 1, "marketing_revenue": 26600}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163223"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-12", "data": {"leads": 2, "consults_scheduled": 1, "consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163226"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-16", "data": {"consults_on_schedule": 3}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163228"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-17", "data": {"consults_on_schedule": 3, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163230"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-19", "data": {"leads": 1, "consults_scheduled": 2, "consults_on_schedule": 1, "marketing_closed_arches": 1, "internal_revenue": 5530}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163233"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-20", "data": {"internal_revenue": 11369}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163235"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-23", "data": {"consults_scheduled": 1, "cancelled": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163239"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-24", "data": {"consults_on_schedule": 3, "presented_treatment": 3}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163241"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-26", "data": {"marketing_closed_tx": 1, "marketing_revenue": 7745}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163243"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-02-27", "data": {"marketing_closed_tx": 1, "internal_revenue": 3598}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163245"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-02", "data": {"consults_on_schedule": 1, "presented_treatment": 1, "marketing_closed_tx": 1, "marketing_revenue": 457}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163248"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-03", "data": {"consults_on_schedule": 3, "presented_treatment": 3}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163250"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-04", "data": {"consults_on_schedule": 3, "presented_treatment": 3, "marketing_closed_tx": 1, "marketing_revenue": 400}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163252"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-05", "data": {"consults_on_schedule": 2, "presented_treatment": 2, "marketing_closed_tx": 1, "marketing_revenue": 554}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163255"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-09", "data": {"consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163257"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-10", "data": {"consults_on_schedule": 3, "presented_treatment": 3, "marketing_closed_tx": 1, "marketing_revenue": 767.2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163259"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-11", "data": {"cancelled": 1, "consults_on_schedule": 3, "presented_treatment": 3}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163262"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-12", "data": {"marketing_closed_tx": 1, "marketing_closed_arches": 2, "marketing_revenue": 56000}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163264"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-16", "data": {"cancelled": 1, "consults_on_schedule": 3, "presented_treatment": 2, "marketing_closed_tx": 1, "marketing_closed_arches": 2, "marketing_revenue": 42000}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163267"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-17", "data": {"consults_on_schedule": 0, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163269"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-18", "data": {"consults_on_schedule": 0, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163271"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-19", "data": {"consults_on_schedule": 0, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163273"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-23", "data": {"consults_on_schedule": 2, "presented_treatment": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163275"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-24", "data": {"consults_on_schedule": 1, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163277"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-25", "data": {"consults_on_schedule": 2, "presented_treatment": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163279"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-26", "data": {"consults_on_schedule": 2, "presented_treatment": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163281"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-30", "data": {"consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163283"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-03-31", "data": {"consults_on_schedule": 2, "presented_treatment": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163285"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-01", "data": {"consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163287"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-02", "data": {"consults_on_schedule": 0, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163289"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-06", "data": {"cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163292"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-07", "data": {"consults_on_schedule": 4, "presented_treatment": 4}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163294"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-08", "data": {"consults_on_schedule": 0, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163296"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-09", "data": {"consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 2, "internal_revenue": 7520}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163299"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-10", "data": {"consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 2, "internal_revenue": 6730}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163301"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-13", "data": {"consults_on_schedule": 2, "presented_treatment": 2, "marketing_revenue": 729}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163303"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-14", "data": {"consults_on_schedule": 1, "presented_treatment": 1, "internal_revenue": 1000}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163306"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-15", "data": {"consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163308"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-16", "data": {"consults_on_schedule": 0, "presented_treatment": 0}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163310"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-20", "data": {"consults_on_schedule": 1, "presented_treatment": 1}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163312"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-04-21", "data": {"consults_on_schedule": 2, "presented_treatment": 2}, "responsible": {"leads": "Latitia", "lead_phone_convos": "Latitia", "consults_scheduled": "Latitia", "internal_closed_tx": "Kevin", "marketing_closed_tx": "Kevin"}, "updated_at": "2026-04-23T19:45:36.163314"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-01-05", "data": {"leads": 0, "lead_phone_convos": 0, "consults_scheduled": 0, "rescheduled": 0, "cancelled": 1, "consults_on_schedule": 2, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163329"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-02", "data": {"leads": 31, "lead_phone_convos": 6, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163358"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-06", "data": {"leads": 8, "lead_phone_convos": 6, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163364"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-07", "data": {"leads": 24, "lead_phone_convos": 4, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163369"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-08", "data": {"leads": 23, "lead_phone_convos": 11, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163374"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-09", "data": {"leads": 0, "lead_phone_convos": 1, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163379"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-14", "data": {"leads": 14, "lead_phone_convos": 7, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163385"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-15", "data": {"leads": 13, "lead_phone_convos": 6, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 2, "marketing_closed_tx": 1, "marketing_closed_arches": 1, "internal_revenue": 0, "marketing_revenue": 1440}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163390"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-16", "data": {"leads": 27, "lead_phone_convos": 12, "consults_scheduled": 4, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163395"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-20", "data": {"leads": 22, "lead_phone_convos": 7, "consults_scheduled": 4, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 2, "presented_treatment": 2, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 1094}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163399"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-21", "data": {"leads": 23, "lead_phone_convos": 6, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 1, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163404"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-22", "data": {"leads": 15, "lead_phone_convos": 4, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 2, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 329}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163409"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-23", "data": {"leads": 1, "lead_phone_convos": 0, "consults_scheduled": 1, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163416"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-27", "data": {"leads": 2, "lead_phone_convos": 1, "consults_scheduled": 0, "rescheduled": 1, "cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163425"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-28", "data": {"leads": 17, "lead_phone_convos": 8, "consults_scheduled": 4, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163434"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-10-29", "data": {"leads": 22, "lead_phone_convos": 6, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163442"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-03", "data": {"leads": 27, "lead_phone_convos": 6, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 3, "presented_treatment": 3, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 2, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 1076}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163451"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-04", "data": {"leads": 27, "lead_phone_convos": 6, "consults_scheduled": 0, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 3, "presented_treatment": 2, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163460"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-05", "data": {"leads": 4, "lead_phone_convos": 0, "consults_scheduled": 0, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 345}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163469"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-06", "data": {"leads": 25, "lead_phone_convos": 10, "consults_scheduled": 3, "rescheduled": 1, "cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163479"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-10", "data": {"leads": 35, "lead_phone_convos": 5, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 2, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163487"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-11", "data": {"leads": 2, "lead_phone_convos": 2, "consults_scheduled": 0, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 2, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163496"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-12", "data": {"leads": 15, "lead_phone_convos": 1, "consults_scheduled": 0, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163505"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-13", "data": {"leads": 15, "lead_phone_convos": 6, "consults_scheduled": 4, "rescheduled": 2, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163511"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-17", "data": {"leads": 36, "lead_phone_convos": 7, "consults_scheduled": 4, "rescheduled": 1, "cancelled": 1, "consults_on_schedule": 2, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163516"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-18", "data": {"leads": 13, "lead_phone_convos": 2, "consults_scheduled": 2, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163521"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-19", "data": {"leads": 4, "lead_phone_convos": 2, "consults_scheduled": 0, "rescheduled": 1, "cancelled": 2, "consults_on_schedule": 3, "presented_treatment": 2, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 2, "marketing_closed_arches": 2, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163526"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-20", "data": {"leads": 11, "lead_phone_convos": 4, "consults_scheduled": 3, "rescheduled": 0, "cancelled": 1, "consults_on_schedule": 2, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163530"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-24", "data": {"leads": 24, "lead_phone_convos": 6, "consults_scheduled": 3, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 3, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 329}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163535"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-25", "data": {"leads": 3, "lead_phone_convos": 2, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163540"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-11-26", "data": {"leads": 21, "lead_phone_convos": 5, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 329}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163544"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-01", "data": {"leads": 13, "lead_phone_convos": 5, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 4, "presented_treatment": 4, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 4, "marketing_closed_arches": 2, "internal_revenue": 0, "marketing_revenue": 696}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163549"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-02", "data": {"leads": 1, "lead_phone_convos": 0, "consults_scheduled": 0, "rescheduled": 2, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163553"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-03", "data": {"leads": 18, "lead_phone_convos": 4, "consults_scheduled": 3, "rescheduled": 1, "cancelled": 2, "consults_on_schedule": 2, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163558"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-04", "data": {"leads": 22, "lead_phone_convos": 2, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 1, "consults_on_schedule": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163563"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-08", "data": {"leads": 18, "lead_phone_convos": 5, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 3, "presented_treatment": 2, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163568"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-09", "data": {"leads": 11, "lead_phone_convos": 2, "consults_scheduled": 1, "rescheduled": 2, "cancelled": 1, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163572"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-10", "data": {"leads": 12, "lead_phone_convos": 2, "consults_scheduled": 0, "rescheduled": 2, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163577"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-11", "data": {"leads": 0, "lead_phone_convos": 0, "consults_scheduled": 0, "rescheduled": 1, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 1, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 2130, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163582"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-15", "data": {"leads": 18, "lead_phone_convos": 6, "consults_scheduled": 4, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 3, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163587"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-16", "data": {"leads": 10, "lead_phone_convos": 2, "consults_scheduled": 1, "rescheduled": 1, "cancelled": 1, "consults_on_schedule": 3, "presented_treatment": 3, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 2, "internal_revenue": 0, "marketing_revenue": 52000}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163591"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-17", "data": {"leads": 10, "lead_phone_convos": 1, "consults_scheduled": 0, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 1, "presented_treatment": 1, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163596"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-18", "data": {"leads": 9, "lead_phone_convos": 3, "consults_scheduled": 3, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 2, "internal_revenue": 0, "marketing_revenue": 56000}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163600"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-22", "data": {"leads": 11, "lead_phone_convos": 2, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 2, "presented_treatment": 2, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 1, "marketing_closed_arches": 1, "internal_revenue": 0, "marketing_revenue": 28000}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163605"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-23", "data": {"leads": 1, "lead_phone_convos": 1, "consults_scheduled": 1, "rescheduled": 0, "cancelled": 1, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163610"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2025-12-29", "data": {"leads": 25, "lead_phone_convos": 5, "consults_scheduled": 2, "rescheduled": 0, "cancelled": 0, "consults_on_schedule": 0, "presented_treatment": 0, "internal_closed_tx": 0, "internal_closed_arches": 0, "marketing_closed_tx": 0, "marketing_closed_arches": 0, "internal_revenue": 0, "marketing_revenue": 0}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163615"}, {"client_id": 1, "client_name": "Aesthetic Oral Arts", "period": "daily", "date_key": "2026-01-06", "data": {"lead_phone_convos": 2, "consults_scheduled": 1, "cancelled": 1, "consults_on_schedule": 2}, "responsible": {"leads": "Tricha", "lead_phone_convos": "Tricha", "consults_scheduled": "Tricha"}, "updated_at": "2026-04-23T19:45:36.163617"}];
+
+
+// ── AGGREGATED VIEWS (weekly / monthly — derived from daily entries) ──
+function getWeekEnding(dateStr){
+  // Returns the Friday (week-ending) for a given date
+  // Week = Mon-Fri. If date is Mon-Fri return that Friday. If Sat/Sun return next Friday.
+  const d=new Date(dateStr+'T12:00:00');
+  const day=d.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
+  let daysToFri;
+  if(day===0) daysToFri=5;       // Sun → +5
+  else if(day===6) daysToFri=6;  // Sat → +6
+  else daysToFri=5-day;          // Mon=4, Tue=3, Wed=2, Thu=1, Fri=0
+  const fri=new Date(d);
+  fri.setDate(fri.getDate()+daysToFri);
+  return fri.toISOString().split('T')[0];
+}
+
+function getMonthKey(dateStr){
+  return dateStr.slice(0,7); // 'YYYY-MM'
+}
+
+function aggregateDaily(clientId, period){
+  const daily=metricsData[clientId]?.['daily']||{};
+  const buckets={};
+  Object.entries(daily).forEach(([dk,data])=>{
+    const bucketKey=period==='weekly'?getWeekEnding(dk):getMonthKey(dk);
+    if(!buckets[bucketKey]) buckets[bucketKey]={};
+    INPUT_METRICS.forEach(m=>{
+      if(data[m.id]!==undefined){
+        buckets[bucketKey][m.id]=(buckets[bucketKey][m.id]||0)+(parseFloat(data[m.id])||0);
+      }
+    });
+  });
+  // Add calcs to each bucket
+  Object.keys(buckets).forEach(k=>{
+    METRICS.filter(m=>m.calc).forEach(m=>{buckets[k][m.id]=m.calc(buckets[k]);});
+  });
+  return buckets;
+}
+
+function fmtWeekLabel(fridayStr){
+  const fri=new Date(fridayStr+'T12:00:00');
+  const mon=new Date(fri);mon.setDate(mon.getDate()-4);
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return fmt(mon)+' – '+fmt(fri);
+}
+
+function renderAggView(period){
+  const wrap=document.getElementById('agg-view-wrap');
+  if(!wrap) return;
+  const sel=document.getElementById('client-select');
+  if(!sel||!sel.value){wrap.innerHTML='';return;}
+  const clientId=parseInt(sel.value);
+  const buckets=aggregateDaily(clientId,period);
+  const keys=Object.keys(buckets).sort();
+  if(!keys.length){
+    wrap.innerHTML='<div style="text-align:center;padding:40px;color:#888786;font-size:13px;font-style:italic;">No daily data to aggregate yet.</div>';
+    return;
+  }
+
+  // Show last 12 buckets
+  const visible=keys.slice(-12);
+
+  // Build perf summary cards
+  const totals={};
+  Object.values(buckets).forEach(d=>{
+    INPUT_METRICS.forEach(m=>{if(d[m.id]!==undefined)totals[m.id]=(totals[m.id]||0)+(parseFloat(d[m.id])||0);});
+  });
+  METRICS.filter(m=>m.calc).forEach(m=>{totals[m.id]=m.calc(totals);});
+  const keyMs=KEY_METRICS.map(id=>METRICS.find(m=>m.id===id)).filter(Boolean);
+  const statsHtml=keyMs.map(m=>{
+    const v=totals[m.id];const bc=benchClass(m,v);
+    return`<div class="stat"><div class="stat-label">${m.label}</div><div class="stat-val ${bc}">${fmtVal(m,v)}</div><div class="stat-bench ${bc}">${m.benchLabel||'Year to date'}</div></div>`;
+  }).join('');
+
+  // Build table
+  const INPUT_ROWS=METRICS.filter(m=>!m.calc||m.bench); // show inputs + benchmarked calcs
+  const tableRows=METRICS.map(m=>{
+    const isCalc=!!m.calc;
+    const cells=visible.map(k=>{
+      const v=buckets[k]?.[m.id];
+      const bc=m.bench?benchClass(m,v):'';
+      const color=bc==='good'?'#27500A':bc==='warn'?'#633806':bc==='bad'?'#791F1F':'inherit';
+      return`<td style="padding:6px 10px;text-align:center;font-size:12px;color:${color};font-weight:${isCalc&&m.bench?'600':'400'}">${fmtVal(m,v)}</td>`;
+    }).join('');
+    const rowBg=isCalc?'background:rgba(11,29,94,0.025);':'';
+    const labelWeight=isCalc&&m.bench?'font-weight:600;color:#1a1a1a;':'color:#888786;';
+    return`<tr style="${rowBg}border-top:0.5px solid rgba(0,0,0,0.05);">
+      <td style="padding:7px 10px;font-size:12px;${labelWeight}white-space:nowrap;">${m.label}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  const colHeaders=visible.map(k=>{
+    const label=period==='weekly'?fmtWeekLabel(k):new Date(k+'-01T12:00:00').toLocaleString('default',{month:'short',year:'2-digit'});
+    return`<th style="padding:7px 10px;font-size:11px;font-weight:600;color:#888786;text-align:center;white-space:nowrap;background:#f9f9f8;">${label}</th>`;
+  }).join('');
+
+  wrap.innerHTML=`
+    <div class="stat-grid" style="margin-bottom:14px;">${statsHtml}</div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">${period==='weekly'?'Weekly':'Monthly'} summary — auto-calculated from daily entries</span>
+        <span style="font-size:11px;color:#888786;">Read only</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="border-collapse:collapse;width:100%;min-width:600px;">
+          <thead><tr>
+            <th style="padding:7px 10px;font-size:11px;font-weight:600;color:#888786;text-align:left;background:#f9f9f8;white-space:nowrap;">Metric</th>
+            ${colHeaders}
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+
+// ── TRENDS VIEW ───────────────────────────────────────────────────────
+let trendsPeriod='weekly';
+let trendsRange=12; // months back; 0=all
+let trendsCharts={};
+
+function setTrendsPeriod(p){
+  trendsPeriod=p;
+  ['weekly','monthly'].forEach(x=>{
+    const b=document.getElementById('tr-'+x);
+    if(b) b.classList.toggle('active',x===p);
+  });
+  renderTrends();
+}
+
+function setTrendsRange(r){
+  trendsRange=r;
+  [3,6,12,0].forEach(x=>{
+    const id=x===0?'tr-all':'tr-'+x+'mo';
+    const b=document.getElementById(id);
+    if(b) b.classList.toggle('active',x===r);
+  });
+  renderTrends();
+}
+
+function getTrendsBuckets(clientId){
+  const daily=metricsData[clientId]?.['daily']||{};
+  const buckets={};
+  Object.entries(daily).forEach(([dk,data])=>{
+    const key=trendsPeriod==='weekly'?getWeekEnding(dk):getMonthKey(dk);
+    if(!buckets[key]) buckets[key]={};
+    INPUT_METRICS.forEach(m=>{
+      if(data[m.id]!==undefined)
+        buckets[key][m.id]=(buckets[key][m.id]||0)+(parseFloat(data[m.id])||0);
+    });
+  });
+  METRICS.filter(m=>m.calc).forEach(m=>{
+    Object.keys(buckets).forEach(k=>{buckets[k][m.id]=m.calc(buckets[k]);});
+  });
+  return buckets;
+}
+
+function filterByRange(buckets){
+  const keys=Object.keys(buckets).sort();
+  if(trendsRange===0) return keys;
+  const cutoff=new Date();
+  cutoff.setMonth(cutoff.getMonth()-trendsRange);
+  const cutStr=cutoff.toISOString().split('T')[0].slice(0,7);
+  return keys.filter(k=>k>=cutStr);
+}
+
+function mkLabel(k){
+  if(trendsPeriod==='monthly'){
+    return new Date(k+'-01T12:00:00').toLocaleString('default',{month:'short',year:'2-digit'});
+  }
+  const fri=new Date(k+'T12:00:00');
+  return fri.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function destroyChart(id){
+  if(trendsCharts[id]){trendsCharts[id].destroy();delete trendsCharts[id];}
+}
+
+function buildChart(id, type, labels, datasets, opts={}){
+  destroyChart(id);
+  const ctx=document.getElementById(id)?.getContext('2d');
+  if(!ctx) return;
+  const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const gridColor=dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+  const tickColor=dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.4)';
+  trendsCharts[id]=new Chart(ctx,{
+    type,
+    data:{labels,datasets},
+    options:{
+      responsive:true,
+      maintainAspectRatio:true,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:dark?'#2a2a2a':'#fff',
+          titleColor:dark?'#ccc':'#333',
+          bodyColor:dark?'#aaa':'#666',
+          borderColor:dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)',
+          borderWidth:1,
+          padding:10,
+          callbacks:{
+            label:(ctx)=>{
+              const v=ctx.raw;
+              if(v===null||v===undefined) return null;
+              if(opts.pct) return ctx.dataset.label+': '+Math.round(v)+'%';
+              if(opts.dollar) return ctx.dataset.label+': $'+Math.round(v).toLocaleString();
+              return ctx.dataset.label+': '+Math.round(v*10)/10;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{
+          grid:{color:gridColor},
+          ticks:{color:tickColor,font:{size:10},maxRotation:45}
+        },
+        y:{
+          grid:{color:gridColor},
+          ticks:{
+            color:tickColor,
+            font:{size:10},
+            callback:(v)=>opts.pct?v+'%':opts.dollar?'$'+v.toLocaleString():v
+          },
+          beginAtZero:true,
+          ...( opts.yMax?{max:opts.yMax}:{} )
+        }
+      },
+      ...( opts.stacked?{scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,grid:{color:gridColor},ticks:{color:tickColor,font:{size:10},callback:(v)=>'$'+v.toLocaleString()}}}}:{} )
+    }
+  });
+}
+
+function renderTrends(){
+  const sel=document.getElementById('trends-client-select');
+  if(!sel||!sel.value) return;
+  const clientId=parseInt(sel.value);
+  const buckets=getTrendsBuckets(clientId);
+  const keys=filterByRange(buckets);
+  if(!keys.length){
+    ['chart-leads','chart-rates','chart-revenue','chart-closing'].forEach(id=>destroyChart(id));
+    return;
+  }
+  const labels=keys.map(mkLabel);
+  const get=(k,id)=>buckets[k]?.[id]??null;
+
+  // ── Stat summary row ────────────────────────────────────────────────
+  const totals={};
+  keys.forEach(k=>{
+    INPUT_METRICS.forEach(m=>{
+      const v=buckets[k]?.[m.id];
+      if(v!=null) totals[m.id]=(totals[m.id]||0)+v;
+    });
+  });
+  METRICS.filter(m=>m.calc).forEach(m=>{totals[m.id]=m.calc(totals);});
+  const summaryMetrics=[
+    {id:'leads',label:'Total leads'},
+    {id:'booking_rate',label:'Avg booking rate'},
+    {id:'show_rate',label:'Avg show rate'},
+    {id:'close_rate',label:'Avg close rate'},
+    {id:'marketing_closed_tx',label:'Total closed tx'},
+    {id:'total_revenue',label:'Total revenue'},
+    {id:'total_closed_arches',label:'Total arches'},
+    {id:'roas',label:'Avg ROAS'},
+  ];
+  const statRow=document.getElementById('trends-stat-row');
+  if(statRow){
+    statRow.style.gridTemplateColumns='repeat(4,1fr)';
+    statRow.innerHTML=summaryMetrics.map(s=>{
+      const m=METRICS.find(x=>x.id===s.id);
+      const v=totals[s.id];
+      const bc=m?.bench?benchClass(m,v):'neutral';
+      return`<div class="stat">
+        <div class="stat-label">${s.label}</div>
+        <div class="stat-val ${bc}">${m?fmtVal(m,v):'—'}</div>
+        <div class="stat-bench ${bc}">${m?.benchLabel||'This period'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Chart 1: Lead volume & consults ─────────────────────────────────
+  buildChart('chart-leads','bar',labels,[
+    {
+      label:'Leads',
+      data:keys.map(k=>get(k,'leads')),
+      backgroundColor:'rgba(11,29,94,0.7)',
+      borderRadius:3,
+      order:2
+    },
+    {
+      label:'Consults scheduled',
+      data:keys.map(k=>get(k,'consults_scheduled')),
+      backgroundColor:'rgba(188,151,98,0.7)',
+      borderRadius:3,
+      order:3
+    },
+    {
+      label:'Consults on schedule',
+      data:keys.map(k=>get(k,'consults_on_schedule')),
+      type:'line',
+      borderColor:'#5DCAA5',
+      backgroundColor:'transparent',
+      borderWidth:2,
+      borderDash:[4,3],
+      pointRadius:3,
+      pointBackgroundColor:'#5DCAA5',
+      tension:0.3,
+      order:1
+    }
+  ]);
+
+  // ── Chart 2: Conversion rates ────────────────────────────────────────
+  buildChart('chart-rates','line',labels,[
+    {
+      label:'Booking rate',
+      data:keys.map(k=>get(k,'booking_rate')),
+      borderColor:'#0b1d5e',
+      backgroundColor:'transparent',
+      borderWidth:2,
+      pointRadius:3,
+      pointBackgroundColor:'#0b1d5e',
+      tension:0.3
+    },
+    {
+      label:'Show rate',
+      data:keys.map(k=>get(k,'show_rate')),
+      borderColor:'#bc9762',
+      backgroundColor:'transparent',
+      borderWidth:2,
+      pointRadius:3,
+      pointBackgroundColor:'#bc9762',
+      tension:0.3
+    },
+    {
+      label:'Close rate',
+      data:keys.map(k=>get(k,'close_rate')),
+      borderColor:'#22c55e',
+      backgroundColor:'transparent',
+      borderWidth:2,
+      pointRadius:3,
+      pointBackgroundColor:'#22c55e',
+      tension:0.3
+    }
+  ],{pct:true,yMax:120});
+
+  // ── Chart 3: Revenue ─────────────────────────────────────────────────
+  buildChart('chart-revenue','bar',labels,[
+    {
+      label:'Marketing revenue',
+      data:keys.map(k=>get(k,'marketing_revenue')),
+      backgroundColor:'rgba(11,29,94,0.75)',
+      borderRadius:3
+    },
+    {
+      label:'Internal revenue',
+      data:keys.map(k=>get(k,'internal_revenue')),
+      backgroundColor:'rgba(188,151,98,0.75)',
+      borderRadius:3
+    }
+  ],{dollar:true,stacked:true});
+
+  // ── Chart 4: Closing ─────────────────────────────────────────────────
+  buildChart('chart-closing','bar',labels,[
+    {
+      label:'Mktg closed tx',
+      data:keys.map(k=>get(k,'marketing_closed_tx')),
+      backgroundColor:'rgba(11,29,94,0.7)',
+      borderRadius:3,
+      order:2
+    },
+    {
+      label:'Total arches',
+      data:keys.map(k=>get(k,'total_closed_arches')),
+      type:'line',
+      borderColor:'#5DCAA5',
+      backgroundColor:'transparent',
+      borderWidth:2,
+      pointRadius:3,
+      pointBackgroundColor:'#5DCAA5',
+      tension:0.3,
+      order:1
+    }
+  ]);
+}
+
+function populateTrendsClientSelect(){
+  const sel=document.getElementById('trends-client-select');
+  if(!sel) return;
+  sel.innerHTML=clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+
+// ── DIRTY FLAG + AUTOSAVE + EXIT PROMPT ──────────────────────────────
+let isDirty = false;
+let autosaveTimer = null;
+let lastSavedAt = null;
+const AUTOSAVE_INTERVAL = 3 * 60 * 1000; // 3 minutes
+
+function markDirty(){
+  isDirty = true;
+  updateSaveStatus('unsaved');
+  resetAutosaveTimer();
+}
+
+function markClean(){
+  isDirty = false;
+  lastSavedAt = new Date();
+  updateSaveStatus('saved');
+}
+
+function updateSaveStatus(state){
+  // Update all save status indicators
+  const indicators = document.querySelectorAll('.save-indicator');
+  indicators.forEach(el=>{
+    if(state==='unsaved'){
+      el.textContent = 'Unsaved changes';
+      el.style.color = '#633806';
+    } else if(state==='saving'){
+      el.textContent = 'Saving...';
+      el.style.color = '#888786';
+    } else {
+      el.textContent = 'Saved ' + lastSavedAt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      el.style.color = '#27500A';
+    }
+  });
+}
+
+function resetAutosaveTimer(){
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(()=>{
+    if(isDirty) triggerAutosave();
+  }, AUTOSAVE_INTERVAL);
+}
+
+async function triggerAutosave(){
+  if(!isDirty) return;
+  updateSaveStatus('saving');
+  // Save whichever view is active
+  if(activeEntryView==='simple'){
+    saveSimpleDay(simpleDate);
+    markClean();
+    showToast('Auto-saved ✓');
+  } else if(activeEntryView==='table'){
+    await saveEntries(true); // silent=true
+  }
+}
+
+// Intercept tab close / browser navigation
+window.addEventListener('beforeunload', e=>{
+  if(isDirty){
+    e.preventDefault();
+    e.returnValue = 'You have unsaved changes. Leave anyway?';
+    return e.returnValue;
+  }
+});
+
+// Exit prompt for in-app navigation (apps menu buttons, view switches)
+function safeNavigate(action, label){
+  if(!isDirty){ action(); return; }
+  showExitPrompt(label, async()=>{
+    await triggerAutosave();
+    action();
+  }, action);
+}
+
+function showExitPrompt(destination, onSave, onLeave){
+  // Remove any existing prompt
+  const existing = document.getElementById('exit-prompt');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'exit-prompt';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:360px;width:90%;box-shadow:none;border:0.5px solid rgba(0,0,0,0.12);">
+      <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:8px;">Unsaved changes</div>
+      <div style="font-size:13px;color:#888786;margin-bottom:24px;line-height:1.6;">You have unsaved entries. Save before ${destination?'opening '+destination:'leaving'}?</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button id="ep-leave" style="height:36px;padding:0 16px;border:0.5px solid rgba(0,0,0,0.12);border-radius:8px;background:transparent;color:#888786;font-size:13px;cursor:pointer;">Leave without saving</button>
+        <button id="ep-save" style="height:36px;padding:0 18px;border:none;border-radius:8px;background:#0b1d5e;color:#bc9762;font-size:13px;font-weight:500;cursor:pointer;">Save &amp; continue</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('ep-save').onclick = ()=>{
+    overlay.remove();
+    onSave();
+  };
+  document.getElementById('ep-leave').onclick = ()=>{
+    isDirty = false; // clear so no browser prompt
+    overlay.remove();
+    onLeave();
+  };
+  // Click outside = dismiss (leave without saving)
+  overlay.addEventListener('click', e=>{
+    if(e.target===overlay){
+      isDirty = false;
+      overlay.remove();
+      onLeave();
+    }
+  });
+}
+
+
+// ── GOOGLE SHEET BACKUP ───────────────────────────────────────────────
+// Each client can have a backup sheet URL stored in their profile
+// Set via: sheetUrls[clientId] = 'https://script.google.com/...'
+let sheetUrls = {}; // loaded from localStorage
+
+function loadSheetUrls(){
+  try { sheetUrls = JSON.parse(localStorage.getItem('gmj_sheet_urls')||'{}'); }
+  catch(e){ sheetUrls = {}; }
+}
+
+function saveSheetUrl(clientId, url){
+  sheetUrls[clientId] = url;
+  localStorage.setItem('gmj_sheet_urls', JSON.stringify(sheetUrls));
+}
+
+async function syncToSheet(clientId, dateKey, data){
+  const url = sheetUrls[clientId];
+  if(!url || !url.startsWith('https://')) return; // no sheet configured, skip silently
+  try {
+    await fetch(url, {
+      method: 'POST',
+      // Google Apps Script requires no-cors for cross-origin POST
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({date_key: dateKey, data})
+    });
+    // no-cors means we can't read the response, but the script still runs
+  } catch(e) {
+    console.warn('Sheet backup failed (non-critical):', e);
+    // Never surface this error to the user — Supabase save already succeeded
+  }
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────
+loadSheetUrls();
+const _savedView=localStorage.getItem('metrics_view')||'yours';
+activeEntryView=localStorage.getItem('metrics_entry_view')||'simple';
+setMainView(_savedView);
+// Set initial entry view button states
+setEntryView(activeEntryView);
+loadClients();
+</script>
+</body>
+</html>

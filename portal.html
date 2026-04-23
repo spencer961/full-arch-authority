@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Full-Arch Authority — Client Portal</title>
+<title>Full-Arch Authority — Success Map</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -26,6 +27,10 @@ const NAVY="#0b1d5e",GOLD="#bc9762",BG="#f5f5f4",BORDER="rgba(0,0,0,0.1)",TEXT="
 const SC={red:"#ef4444",yellow:"#f59e0b",green:"#22c55e"};
 const CYCLE={red:"yellow",yellow:"green",green:"red"};
 const PW="harrypotter";
+const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+const SB_HEADERS={'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+const STATE_ID='gmj_main';
 const INP={width:"100%",padding:"10px 14px",borderRadius:8,background:"#f9f9f8",border:"0.5px solid rgba(0,0,0,0.15)",color:TEXT,fontSize:14,outline:"none",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",boxSizing:"border-box"};
 const CARD={background:"#fff",borderRadius:12,border:"0.5px solid rgba(0,0,0,0.1)",padding:"20px 24px"};
 const BTNP={padding:"9px 20px",borderRadius:8,border:"none",background:NAVY,color:GOLD,cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",letterSpacing:"0.01em"};
@@ -236,11 +241,7 @@ function App(){
     setSubview("assessment");
   };
 
-  const submitClientForm=()=>{
-    const newClient={id:"c"+Date.now(),status:"pending",submittedAt:new Date().toISOString(),answers:{...formAns},snapshots:[]};
-    setClients(cs=>[...cs,newClient]);
-    setFormAns({});setFormStep(0);setView("form-confirm");
-  };
+  const submitClientForm=()=>{}; // handled by onboarding.html
 
   // ── SHARED COMPONENTS ──────────────────────────────────────────────
   const Hdr=({right,sub,practiceName})=>(
@@ -427,7 +428,7 @@ function App(){
               <div style={{textAlign:"center",marginBottom:32}}>
                 <div style={{width:56,height:56,borderRadius:12,background:NAVY,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,margin:"0 auto 16px",color:GOLD,letterSpacing:"0.01em"}}>FA</div>
                 <h1 style={{fontSize:22,fontWeight:700,color:TEXT,marginBottom:6}}>Welcome Back</h1>
-                <p style={{fontSize:13,color:MUTED}}>Sign in to your client dashboard</p>
+                <p style={{fontSize:13,color:MUTED}}>Sign in to the Success Map consultant view</p>
               </div>
               <div style={{marginBottom:16}}>
                 <label style={{display:"block",fontSize:12,fontWeight:600,color:MUTED,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Password</label>
@@ -436,70 +437,10 @@ function App(){
               {pwErr&&<div style={{fontSize:12,color:"#ef4444",marginBottom:12}}>Incorrect password. Try again.</div>}
               <button onClick={()=>pw===PW?(setView("consultant"),setPw("")):(setPwErr(true),setPw(""))} style={{...BTNP,width:"100%",padding:"12px",fontSize:15}}>Sign In →</button>
               <div style={{textAlign:"center",marginTop:24,paddingTop:20,borderTop:"0.5px solid rgba(0,0,0,0.1)"}}>
-                <p style={{fontSize:12,color:MUTED,marginBottom:8}}>Are you a client?</p>
-                <button onClick={()=>{setView("client-form");setFormStep(0);setFormAns({});}} style={{...BTNS,fontSize:12,padding:"7px 20px"}}>Fill Out Onboarding Form</button>
+                <p style={{fontSize:12,color:MUTED,marginBottom:6}}>Are you a new client?</p>
+                <a href="onboarding.html" style={{fontSize:12,color:NAVY,fontWeight:500,textDecoration:"underline",textUnderlineOffset:2}}>Fill out your onboarding form &#8594;</a>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── CLIENT FORM ────────────────────────────────────────────────────
-  if(view==="client-form"){
-    const sec=formSecs[formStep];
-    const upd=(id,v)=>setFormAns(a=>({...a,[id]:v}));
-    const toggleCb=(fid,opt)=>{const cur=formAns[fid]||[];upd(fid,cur.includes(opt)?cur.filter(o=>o!==opt):[...cur,opt]);};
-    return(
-      <div style={{background:BG,minHeight:"100vh"}}>
-        <Hdr sub="Client Onboarding" right={<button onClick={()=>setView("login")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Back</button>}/>
-        <div style={{height:4,background:"rgba(255,255,255,0.1)"}}><div style={{height:"100%",width:((formStep+1)/formSecs.length*100)+"%",background:GOLD,transition:"width 0.4s"}}/></div>
-        <div style={{maxWidth:640,margin:"0 auto",padding:"36px 20px 80px"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
-            <div style={{display:"flex",gap:4}}>{formSecs.map((_,i)=>(<div key={i} style={{width:i===formStep?16:5,height:5,borderRadius:3,background:i<formStep?GOLD:i===formStep?NAVY:"rgba(0,0,0,0.12)",transition:"all 0.3s"}}/>))}</div>
-            <span style={{fontSize:12,color:MUTED}}>Step {formStep+1} of {formSecs.length}</span>
-          </div>
-          <div style={{...CARD,padding:"32px 36px"}}>
-            <h1 style={{fontSize:20,fontWeight:600,color:TEXT,marginBottom:6}}>{sec.title}</h1>
-            <p style={{fontSize:13,color:MUTED,marginBottom:28}}>{sec.sub}</p>
-            <div style={{display:"flex",flexDirection:"column",gap:20}}>
-              {sec.fields.map(f=>(<div key={f.id}>
-                <label style={{display:"block",fontSize:13,fontWeight:500,color:TEXT,marginBottom:8}}>{f.label}{f.required&&<span style={{color:GOLD}}> *</span>}</label>
-                {f.type==="checkbox"?(
-                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                    {(f.options||[]).map(opt=>{const chk=(formAns[f.id]||[]).includes(opt);return(<label key={opt} onClick={()=>toggleCb(f.id,opt)} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"9px 12px",borderRadius:8,border:"0.5px solid "+(chk?NAVY:BORDER),background:chk?"rgba(11,29,94,0.04)":"#fff",transition:"all 0.15s"}}>
-                      <div style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(chk?NAVY:"#c0c6d8"),background:chk?NAVY:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chk&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
-                      <span style={{fontSize:13,color:chk?NAVY:TEXT}}>{opt}</span>
-                    </label>);})}
-                  </div>
-                ):f.type==="textarea"?(
-                  <textarea value={formAns[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder} rows={4} style={{...INP,resize:"vertical",lineHeight:1.6}}/>
-                ):(
-                  <input type="text" value={formAns[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder} style={INP}/>
-                )}
-              </div>))}
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:32,paddingTop:24,borderTop:"0.5px solid rgba(0,0,0,0.1)"}}>
-              <button onClick={()=>formStep>0&&setFormStep(s=>s-1)} style={{...BTNS,opacity:formStep===0?0.4:1,cursor:formStep===0?"not-allowed":"pointer"}}>← Back</button>
-              <button onClick={()=>{if(formStep<formSecs.length-1)setFormStep(s=>s+1);else submitClientForm();}} style={BTNP}>{formStep===formSecs.length-1?"Submit →":"Next →"}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if(view==="form-confirm"){
-    return(
-      <div style={{background:BG,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
-        <Hdr/>
-        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
-          <div style={{...CARD,maxWidth:480,textAlign:"center",padding:"48px 40px"}}>
-            <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(34,197,94,0.1)",border:"2px solid #22c55e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:22,color:"#22c55e",fontWeight:700}}>&#10003;</div>
-            <h2 style={{fontSize:22,fontWeight:700,color:TEXT,marginBottom:10}}>Form Submitted!</h2>
-            <p style={{fontSize:14,color:MUTED,lineHeight:1.7,marginBottom:28}}>Thank you. Your onboarding form has been received. Our consultant will review your practice information and reach out shortly to schedule your initial assessment.</p>
-            <button onClick={()=>setView("login")} style={{...BTNS,padding:"10px 28px"}}>← Return to Login</button>
           </div>
         </div>
       </div>

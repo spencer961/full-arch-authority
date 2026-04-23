@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full-Arch Authority — Onboarding</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f4;color:#1a1a1a;}
+input,textarea,button,select{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#0b1d5e!important;box-shadow:0 0 0 2px rgba(11,29,94,0.1)!important;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState}=React;
+const NAVY="#0b1d5e",GOLD="#bc9762",BG="#f5f5f4",BORDER="rgba(0,0,0,0.1)",TEXT="#1a1a1a",MUTED="#888786";
+const INP={width:"100%",padding:"10px 14px",borderRadius:8,background:"#f9f9f8",border:"0.5px solid rgba(0,0,0,0.15)",color:TEXT,fontSize:14,outline:"none",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",boxSizing:"border-box"};
+const CARD={background:"#fff",borderRadius:12,border:"0.5px solid rgba(0,0,0,0.1)",padding:"20px 24px"};
+const BTNP={padding:"9px 20px",borderRadius:8,border:"none",background:NAVY,color:GOLD,cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",letterSpacing:"0.01em"};
+const BTNS={padding:"8px 16px",borderRadius:8,border:"0.5px solid rgba(0,0,0,0.15)",background:"transparent",color:TEXT,cursor:"pointer",fontSize:13,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"};
+
+const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+
+const DSEC=[
+  {id:"practice",title:"Practice Information",sub:"Tell us about your practice",fields:[
+    {id:"practiceName",label:"Practice Name",type:"text",required:true},
+    {id:"doctorName",label:"Doctor(s) or Owner(s) Name",type:"text",required:true},
+    {id:"officeManager",label:"Office Manager's Name",type:"text",required:true},
+  ]},
+  {id:"services",title:"Services & Pricing",sub:"What high-ticket services do you offer?",fields:[
+    {id:"services",label:"What type of implant / high-ticket cases do you provide?",type:"checkbox",required:true,options:["Full Fixed Arches / All-on-X","Overdentures / Implant Retained Dentures","Standard Dentures","Singles / Multiples Implants","Cosmetic Smile Makeovers","Orthodontic Treatment","Sleep Apnea","TMJ","Other"]},
+    {id:"pricing",label:"What do you charge for your high-ticket services?",type:"textarea",placeholder:"e.g. Full-fixed arch: $18,000, Single implant: $4,000..."},
+    {id:"currentPatients",label:"How many patients do you treat for each service per month?",type:"textarea",placeholder:"e.g. Singles: 8/mo, Full-fixed: 2/mo..."},
+    {id:"monthlyGoal",label:"What is your monthly production goal?",type:"textarea",placeholder:"e.g. Full-fixed: $50,000/mo..."},
+  ]},
+  {id:"brand",title:"Brand & Content",sub:"Your unique positioning and marketing assets",fields:[
+    {id:"uvp",label:"What makes you unique? Why should someone choose you over anyone else?",type:"textarea",placeholder:"Your unique value proposition..."},
+    {id:"videoTestimonials",label:"How many video testimonials / smile reveals do you have?",type:"text",placeholder:"e.g. 5 implant, 2 cosmetic"},
+    {id:"beforeAfterPhotos",label:"How many before & after photos do you have for marketing?",type:"text",placeholder:"e.g. 30 total"},
+    {id:"educationalVideos",label:"How many educational videos do you have for marketing?",type:"text",placeholder:"e.g. 3 explainer videos"},
+  ]},
+  {id:"marketing",title:"Marketing System",sub:"Your current lead generation activities",fields:[
+    {id:"marketingCampaigns",label:"What marketing campaigns are you currently running and what are you spending on each?",type:"textarea",placeholder:"e.g. Google PPC: $3,000/mo..."},
+    {id:"leadsPerChannel",label:"How many leads are you getting from each initiative?",type:"textarea",placeholder:"e.g. Google: 20/mo, Facebook: 15/mo..."},
+    {id:"howTrackResults",label:"How do you track the results or effectiveness of your marketing?",type:"textarea",placeholder:"Describe your tracking tools..."},
+  ]},
+  {id:"closing",title:"Closing System",sub:"Your process from lead to treatment start",fields:[
+    {id:"whoAnswersPhone",label:"Who answers the phone when implant leads call in?",type:"text",placeholder:"e.g. Dedicated appointment setter..."},
+    {id:"bookingRate",label:"What is your lead to scheduled consult rate?",type:"text",placeholder:"e.g. 40% or Not Sure"},
+    {id:"treatmentCoordinator",label:"Who is fulfilling the treatment coordinator role?",type:"text",placeholder:"Name and/or title"},
+    {id:"showRate",label:"What is your current show rate for consultations?",type:"text",placeholder:"e.g. 75% or Not Sure"},
+    {id:"closeRate",label:"What is your current treatment close rate?",type:"text",placeholder:"e.g. 30% or Not Sure"},
+    {id:"financingCompanies",label:"Which financing companies do you work with?",type:"text",placeholder:"e.g. CareCredit, Lending Club..."},
+  ]},
+  {id:"team",title:"Team & Training",sub:"Your team's skills and accountability",fields:[
+    {id:"teamTraining",label:"Describe the training you have provided your appointment setter(s) and treatment coordinator(s)",type:"textarea",placeholder:"Scripts, shadowing, formal programs..."},
+    {id:"teamAccountability",label:"How do you hold your team accountable?",type:"textarea",placeholder:"How do you monitor and measure performance?"},
+    {id:"incentives",label:"Describe any incentives you use to motivate your team",type:"textarea",placeholder:"Bonuses, commissions, non-financial rewards..."},
+  ]},
+  {id:"challenges",title:"Challenges & Goals",sub:"Where do you need the most help?",fields:[
+    {id:"mainIssues",label:"What are the main issues that need to be addressed?",type:"textarea",placeholder:"Be as specific as possible..."},
+  ]},
+];
+
+function App(){
+  const [step,setStep]=useState(0);
+  const [ans,setAns]=useState({});
+  const [done,setDone]=useState(false);
+  const [submitting,setSubmitting]=useState(false);
+  const [err,setErr]=useState("");
+
+  const sec=DSEC[step];
+  const upd=(id,v)=>setAns(a=>({...a,[id]:v}));
+  const toggleCb=(fid,opt)=>{const cur=ans[fid]||[];upd(fid,cur.includes(opt)?cur.filter(o=>o!==opt):[...cur,opt]);};
+
+  const Hdr=()=>(
+    <div style={{background:NAVY,padding:"14px 28px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div>
+        <div style={{fontWeight:700,fontSize:18,color:GOLD,letterSpacing:"0.01em",lineHeight:1.2}}>Full-Arch Authority</div>
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginTop:1}}>Client Onboarding</div>
+      </div>
+    </div>
+  );
+
+  const submit=async()=>{
+    if(!ans.email||!ans.practiceName){setErr("Please fill in Practice Name and Email before submitting.");return;}
+    setSubmitting(true);setErr("");
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/onboarding_submissions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'return=minimal'},
+        body:JSON.stringify({email:ans.email,practice_name:ans.practiceName,answers:ans,submitted_at:new Date().toISOString(),reviewed:false})
+      });
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      setDone(true);
+    }catch(e){setErr("Something went wrong. Please try again.");console.error(e);}
+    setSubmitting(false);
+  };
+
+  if(done){return(
+    <div style={{background:BG,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+      <Hdr/>
+      <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+        <div style={{...CARD,maxWidth:480,textAlign:"center",padding:"48px 40px"}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"rgba(34,197,94,0.1)",border:"2px solid #22c55e",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",fontSize:22,color:"#22c55e",fontWeight:700}}>&#10003;</div>
+          <h2 style={{fontSize:22,fontWeight:600,color:TEXT,marginBottom:10}}>Form Submitted!</h2>
+          <p style={{fontSize:14,color:MUTED,lineHeight:1.7,marginBottom:16}}>Thank you. Your onboarding form has been received. Our consultant will review your information and reach out shortly to schedule your initial assessment.</p>
+          <p style={{fontSize:12,color:MUTED}}>You can close this tab.</p>
+        </div>
+      </div>
+    </div>
+  );}
+
+  return(
+    <div style={{background:BG,minHeight:"100vh"}}>
+      <Hdr/>
+      <div style={{height:4,background:"rgba(0,0,0,0.06)"}}><div style={{height:"100%",width:((step+1)/DSEC.length*100)+"%",background:GOLD,transition:"width 0.4s"}}/></div>
+      <div style={{maxWidth:640,margin:"0 auto",padding:"36px 20px 80px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
+          <div style={{display:"flex",gap:4}}>{DSEC.map((_,i)=>(<div key={i} style={{width:i===step?16:5,height:5,borderRadius:3,background:i<step?GOLD:i===step?NAVY:"rgba(0,0,0,0.12)",transition:"all 0.3s"}}/>))}</div>
+          <span style={{fontSize:12,color:MUTED}}>Step {step+1} of {DSEC.length}</span>
+        </div>
+        <div style={{...CARD,padding:"32px 36px"}}>
+          <h1 style={{fontSize:20,fontWeight:600,color:TEXT,marginBottom:6}}>{sec.title}</h1>
+          <p style={{fontSize:13,color:MUTED,marginBottom:28}}>{sec.sub}</p>
+          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+            {sec.fields.map(f=>(<div key={f.id}>
+              <label style={{display:"block",fontSize:13,fontWeight:500,color:TEXT,marginBottom:8}}>{f.label}{f.required&&<span style={{color:GOLD}}> *</span>}</label>
+              {f.type==="checkbox"?(
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {(f.options||[]).map(opt=>{const chk=(ans[f.id]||[]).includes(opt);return(<label key={opt} onClick={()=>toggleCb(f.id,opt)} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"9px 12px",borderRadius:8,border:"0.5px solid "+(chk?NAVY:BORDER),background:chk?"rgba(11,29,94,0.04)":"#fff",transition:"all 0.15s"}}>
+                    <div style={{width:16,height:16,borderRadius:4,border:"1.5px solid "+(chk?NAVY:"#c0c6d8"),background:chk?NAVY:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chk&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>&#10003;</span>}</div>
+                    <span style={{fontSize:13,color:chk?NAVY:TEXT}}>{opt}</span>
+                  </label>);})}
+                </div>
+              ):f.type==="textarea"?(
+                <textarea value={ans[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder} rows={4} style={{...INP,resize:"vertical",lineHeight:1.6,height:"auto",padding:"10px 14px"}}/>
+              ):(
+                <input type={f.id==="email"?"email":"text"} value={ans[f.id]||""} onChange={e=>upd(f.id,e.target.value)} placeholder={f.placeholder||""} style={INP}/>
+              )}
+            </div>))}
+          </div>
+          {err&&<div style={{marginTop:16,padding:"10px 14px",background:"#FCEBEB",border:"0.5px solid rgba(163,45,45,0.2)",borderRadius:8,fontSize:13,color:"#A32D2D"}}>{err}</div>}
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:32,paddingTop:24,borderTop:"0.5px solid rgba(0,0,0,0.1)"}}>
+            <button onClick={()=>step>0&&setStep(s=>s-1)} style={{...BTNS,opacity:step===0?0.4:1,cursor:step===0?"not-allowed":"pointer"}}>&#8592; Back</button>
+            <button onClick={()=>{if(step<DSEC.length-1)setStep(s=>s+1);else submit();}} disabled={submitting} style={{...BTNP,opacity:submitting?0.7:1}}>{submitting?"Submitting...":step===DSEC.length-1?"Submit &#8594;":"Next &#8594;"}</button>
+          </div>
+        </div>
+        <div style={{textAlign:"center",marginTop:20,fontSize:11,color:"rgba(0,0,0,0.3)"}}>Full-Arch Authority &middot; Confidential</div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
