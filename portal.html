@@ -159,7 +159,32 @@ const SAMPLE_CLIENTS=[
 
 function App(){
   const [view,setView]=useState("login");
-  const [clients,setClients]=useState(SAMPLE_CLIENTS);
+  const [clients,setClients]=useState([]);
+  const [loadingClients,setLoadingClients]=useState(false);
+
+  // Load real clients from DB when logged in
+  const loadClients=async()=>{
+    setLoadingClients(true);
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/clients?select=id,name,doctor,email,status,info&order=id`,{
+        headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+      });
+      const rows=await res.json();
+      if(Array.isArray(rows)&&rows.length){
+        setClients(rows.map(r=>({
+          id:r.id,
+          name:r.name,
+          doctor:r.doctor||'',
+          email:r.email||'',
+          status:r.status||'active',
+          info:r.info||{},
+          snapshots:[], // will load separately
+          answers:r.info||{}
+        })));
+      }
+    }catch(e){console.warn('Failed to load clients:',e);}
+    setLoadingClients(false);
+  };
   const [selClient,setSelClient]=useState(null);
   const [subview,setSubview]=useState("dashboard"); // dashboard | form-review | assessment | client-map
   const [assScores,setAssScores]=useState({});

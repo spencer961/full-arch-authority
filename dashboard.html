@@ -163,7 +163,7 @@
 </head>
 <body>
 <div style="background:#bc9762;color:#0b1d5e;font-size:11px;font-weight:700;text-align:center;padding:5px;letter-spacing:.05em;">
-  DASHBOARD v2 — Apr 23 2026 · <span style="font-weight:400;opacity:0.7;">Remove this bar once confirmed</span>
+  DASHBOARD v4 — Apr 24 2026 · clients table live · <span style="font-weight:400;opacity:0.7;">Remove this bar once confirmed</span>
 </div>
 <div class="app" id="app"></div>
 
@@ -372,7 +372,12 @@ function renderNotifPanel(tab){
   head.textContent=unread.length?`${unread.length} unread`:'Notifications';
   let html='';
   if(!subs.length){
-    html='<div style="padding:20px 14px;font-size:13px;color:var(--text-tertiary);text-align:center;font-style:italic;">No notifications yet</div>';
+    html=`<div style="padding:20px 14px;text-align:center;">
+      <div style="font-size:13px;color:var(--text-tertiary);font-style:italic;margin-bottom:12px;">No submissions yet</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Share this link with prospects:</div>
+      <div style="background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--text-tertiary);font-family:monospace;word-break:break-all;margin-bottom:10px;">spencer961.github.io/full-arch-authority/onboarding.html</div>
+      <button onclick="window.open('https://spencer961.github.io/full-arch-authority/onboarding.html','_blank')" style="height:30px;padding:0 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">Open form ↗</button>
+    </div>`;
   } else {
     if(unread.length){
       html+=`<div class="hdr-drop-head">New · ${unread.length}</div>`;
@@ -520,11 +525,16 @@ let _supabaseLoaded=false;
 let view='clients',filter='all',detailId=null,editMode=false,clientMode=false,clientModeId=null,accountingMode=false,reorderClientId=null;
 const activePractice={};
 
-function save(){
+function save(clientId){
   localStorage.setItem('gmj_dashboard',JSON.stringify(S));
   setSyncStatus('saving');
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(pushToSupabase,900);
+  // If a specific client was changed, upsert it to DB immediately
+  if(clientId!==undefined){
+    const c=S.clients.find(x=>x.id===clientId);
+    if(c) upsertClient(c);
+  }
 }
 
 function setSyncStatus(s){
@@ -535,12 +545,15 @@ function setSyncStatus(s){
 }
 
 async function pushToSupabase(){
-  if(!_supabaseLoaded) return; // never overwrite before we've loaded
+  if(!_supabaseLoaded) return;
   try{
+    // Save UI state (links, settings) to app_state — NOT clients
+    const uiState={...S};
+    delete uiState.clients; // clients live in their own table now
     const res=await fetch(`${SUPABASE_URL}/rest/v1/app_state`,{
       method:'POST',
       headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify({id:STATE_ID,data:S,updated_at:new Date().toISOString()})
+      body:JSON.stringify({id:STATE_ID,data:uiState,updated_at:new Date().toISOString()})
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
     setSyncStatus('saved');
@@ -551,23 +564,169 @@ async function pushToSupabase(){
   }
 }
 
+
+// ── CLIENT TABLE CRUD ─────────────────────────────────────────────────
+async function upsertClient(c){
+  // Separate fixed columns from info blob
+  const {id,name,doctor,email,status,...rest}=c;
+  // Remove notes from info — they live in client_notes table
+  const info={...rest};
+  delete info.notesLog;
+  const body={name,doctor:doctor||null,email:email||null,
+    status:status||'active',info,updated_at:new Date().toISOString()};
+  try{
+    if(id&&id<=9999){
+      // Update existing
+      await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${id}`,{
+        method:'PATCH',
+        headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+        body:JSON.stringify(body)
+      });
+    } else {
+      // Insert new client
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/clients`,{
+        method:'POST',
+        headers:{...SB_HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify(body)
+      });
+      const rows=await res.json();
+      if(rows&&rows[0]&&rows[0].id) return rows[0].id; // return new DB id
+    }
+  }catch(e){console.warn('upsertClient failed:',e);}
+  return id;
+}
+
+async function deleteClientFromDB(id){
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${id}`,{
+      method:'DELETE',headers:SB_HEADERS
+    });
+  }catch(e){console.warn('deleteClient failed:',e);}
+}
+
+// ── NOTES CRUD ────────────────────────────────────────────────────────
+async function saveNoteToDB(clientId, note){
+  try{
+    if(note.dbId){
+      await fetch(`${SUPABASE_URL}/rest/v1/client_notes?id=eq.${note.dbId}`,{
+        method:'PATCH',
+        headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+        body:JSON.stringify({body:note.text||note.body,edited_at:new Date().toISOString(),edit_history:note.editHistory||[]})
+      });
+    } else {
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/client_notes`,{
+        method:'POST',
+        headers:{...SB_HEADERS,'Prefer':'return=representation'},
+        body:JSON.stringify({client_id:clientId,body:note.text||note.body,created_by:'Spencer',created_at:note.createdAt||new Date().toISOString()})
+      });
+      const rows=await res.json();
+      if(rows&&rows[0]) return rows[0].id;
+    }
+  }catch(e){console.warn('saveNote failed:',e);}
+}
+
+async function deleteNoteFromDB(dbId){
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/client_notes?id=eq.${dbId}`,{
+      method:'DELETE',headers:SB_HEADERS
+    });
+  }catch(e){console.warn('deleteNote failed:',e);}
+}
+
+async function loadClientsFromDB(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=id`,{headers:SB_HEADERS});
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length){
+      // Merge DB rows into S.clients preserving local UI state
+      S.clients=rows.map(row=>{
+        const existing=S.clients.find(c=>c.id===row.id)||{};
+        return{
+          id:row.id,
+          name:row.name,
+          doctor:row.doctor||'',
+          email:row.email||'',
+          status:row.status||'active',
+          ...row.info, // spread info blob (practices, staff, fields, etc)
+          ...existing, // keep any local-only state
+          id:row.id, // ensure id stays correct
+          name:row.name,
+        };
+      });
+    }
+  }catch(e){console.warn('loadClientsFromDB failed:',e);}
+}
+
+async function loadNotesFromDB(clientId){
+  try{
+    const res=await fetch(
+      `${SUPABASE_URL}/rest/v1/client_notes?client_id=eq.${clientId}&order=created_at.asc`,
+      {headers:SB_HEADERS}
+    );
+    const rows=await res.json();
+    if(Array.isArray(rows)){
+      const c=S.clients.find(x=>x.id===clientId);
+      if(c){
+        c.notesLog=rows.map(r=>({
+          dbId:r.id,
+          id:r.id,
+          text:r.body,
+          body:r.body,
+          createdAt:r.created_at,
+          editedAt:r.edited_at,
+          createdBy:r.created_by,
+          editHistory:r.edit_history||[]
+        }));
+      }
+    }
+  }catch(e){console.warn('loadNotes failed:',e);}
+}
+
 async function loadFromSupabase(){
   try{
+    // Load UI state from app_state
     const res=await fetch(`${SUPABASE_URL}/rest/v1/app_state?id=eq.${STATE_ID}&select=data`,{headers:SB_HEADERS});
     const rows=await res.json();
     if(rows&&rows.length&&rows[0].data){
-      S=rows[0].data;
-      migrateData();
-      localStorage.setItem('gmj_dashboard',JSON.stringify(S));
-      setSyncStatus('saved');
-      setTimeout(()=>setSyncStatus('idle'),2000);
-      render();
+      const uiState=rows[0].data;
+      // Merge UI state but keep clients from DB
+      const currentClients=S.clients;
+      S={...uiState};
+      if(!S.clients||!S.clients.length) S.clients=currentClients;
     }
+    // Load clients from dedicated table
+    await loadClientsFromDB();
+    migrateData();
+    localStorage.setItem('gmj_dashboard',JSON.stringify(S));
+    setSyncStatus('saved');
+    setTimeout(()=>setSyncStatus('idle'),2000);
+    render();
   }catch(e){
     setSyncStatus('error');
     console.warn('Could not load from Supabase:',e);
   }finally{
-    _supabaseLoaded=true; // safe to push now regardless of outcome
+    _supabaseLoaded=true;
+  }
+}
+
+async function loadSubmissions(){
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/onboarding_submissions?select=*&order=submitted_at.desc`,{headers:SB_HEADERS});
+    const rows=await res.json();
+    if(Array.isArray(rows)){
+      S.onboardingSubmissions=rows.map(r=>({
+        id:r.id,
+        practiceName:r.practice_name||r.answers?.practiceName||'Unknown',
+        email:r.email||r.answers?.email||'',
+        submittedAt:r.submitted_at,
+        reviewed:r.reviewed||false,
+        linkedClientId:r.linked_client_id||null,
+        answers:r.answers||{}
+      }));
+      updateNotifBadge();
+    }
+  }catch(e){
+    console.warn('Could not load submissions:',e);
   }
 }
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
@@ -3179,6 +3338,7 @@ function openAccountingOverview(){
 
 render();
 loadFromSupabase();
+loadSubmissions();
 document.addEventListener('DOMContentLoaded',updateNotifBadge);
 </script>
 </body>
