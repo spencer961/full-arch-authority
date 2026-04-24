@@ -163,7 +163,7 @@
 </head>
 <body>
 <div style="background:#bc9762;color:#0b1d5e;font-size:11px;font-weight:700;text-align:center;padding:5px;letter-spacing:.05em;">
-  DASHBOARD v4 — Apr 24 2026 · clients table live · <span style="font-weight:400;opacity:0.7;">Remove this bar once confirmed</span>
+  DASHBOARD v6 — Apr 24 2026 · <span style="font-weight:400;opacity:0.7;">Remove this bar once confirmed</span>
 </div>
 <div class="app" id="app"></div>
 
@@ -410,6 +410,48 @@ function updateNotifBadge(){
   const unread=subs.filter(s=>!s.reviewed).length;
   const badge=document.getElementById('notif-badge');
   if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
+}
+
+function openSubmissionsModal(){
+  const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
+  const unread=subs.filter(s=>!s.reviewed);
+  const read=subs.filter(s=>s.reviewed);
+
+  const renderRow=(s,isUnread)=>`
+    <div onclick="closeModal();openSubmission('${s.id}')" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:0.5px solid var(--border-light);cursor:pointer;background:${isUnread?'rgba(11,29,94,0.02)':'transparent'};">
+      <div style="width:7px;height:7px;border-radius:50%;background:${isUnread?'var(--accent)':'transparent'};border:1.5px solid ${isUnread?'var(--accent)':'var(--border-mid)'};flex-shrink:0;margin-top:5px;"></div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;color:var(--text-primary);">${esc(s.practiceName||'Unknown practice')}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:1px;">${esc(s.email||'')}</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">${s.submittedAt?new Date(s.submittedAt).toLocaleString():''}</div>
+      </div>
+      <div style="font-size:11px;color:var(--accent);padding:3px 8px;border-radius:6px;border:0.5px solid var(--accent);white-space:nowrap;flex-shrink:0;">Review →</div>
+    </div>`;
+
+  let body=`<h3 style="margin-bottom:4px;">Onboarding Submissions</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">Forms submitted by prospects. Click to review and create a client profile.</p>`;
+
+  if(!subs.length){
+    body+=`<div style="text-align:center;padding:32px 20px;">
+      <div style="font-size:13px;color:var(--text-tertiary);font-style:italic;margin-bottom:12px;">No submissions yet.</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Share this link with prospects:</div>
+      <div style="background:var(--bg-secondary);border:0.5px solid var(--border-mid);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--text-tertiary);font-family:monospace;word-break:break-all;margin-bottom:12px;">spencer961.github.io/full-arch-authority/onboarding.html</div>
+      <button onclick="window.open('https://spencer961.github.io/full-arch-authority/onboarding.html','_blank')" style="height:30px;padding:0 14px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">Open form ↗</button>
+    </div>`;
+  } else {
+    if(unread.length){
+      body+=`<div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;padding:8px 16px;background:var(--bg-secondary);">New · ${unread.length}</div>`;
+      body+=unread.map(s=>renderRow(s,true)).join('');
+    }
+    if(read.length){
+      body+=`<div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;padding:8px 16px;background:var(--bg-secondary);border-top:0.5px solid var(--border-light);">Reviewed · ${read.length}</div>`;
+      body+=read.map(s=>renderRow(s,false)).join('');
+    }
+  }
+  body+=`<div style="padding:12px 16px;border-top:0.5px solid var(--border-light);">
+    <button class="m-cancel" onclick="closeModal()">Close</button>
+  </div>`;
+  showModal(body);
 }
 
 function openSubmission(id){
@@ -822,11 +864,11 @@ function render(){
           <div style="flex:1;"><div class="hdr-drop-label">Dashboard</div><div class="hdr-drop-sub">Client management</div></div>
           <span class="hdr-drop-tag" style="background:#EAF3DE;color:#27500A;">Active</span>
         </div>
-        <div class="hdr-drop-row" onclick="document.getElementById('apps-panel')?.classList.remove('open');toggleNotifPanel(null,'forms')">
+        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('onboarding.html','_blank')">
           <div class="hdr-drop-icon" style="background:#FAEEDA;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#633806" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </div>
-          <div style="flex:1;"><div class="hdr-drop-label">Onboarding forms</div><div class="hdr-drop-sub">Review submissions</div></div>
+          <div style="flex:1;"><div class="hdr-drop-label">Onboarding forms</div><div class="hdr-drop-sub">Open client intake form</div></div>
           <span class="hdr-drop-tag" id="apps-forms-badge" style="background:#FAEEDA;color:#633806;display:none;"></span>
         </div>
         <div class="hdr-drop-row" onclick="closeAllPanels();window.open('portal.html','_blank')">
