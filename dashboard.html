@@ -97,7 +97,7 @@
   .icon-btn:hover{color:var(--text-secondary);background:var(--bg-secondary);}
 
   /* link chips */
-  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;}
+  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px 6px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;border-left-width:3px;}
   .chip-label{flex:1;color:var(--text-primary);}
   .chip-cat{font-size:11px;color:var(--text-tertiary);}
   .add-row{display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;width:100%;font-family:var(--font);}
@@ -162,9 +162,6 @@
 </style>
 </head>
 <body>
-<div style="background:#bc9762;color:#0b1d5e;font-size:11px;font-weight:700;text-align:center;padding:5px;letter-spacing:.05em;">
-  DASHBOARD v6 — Apr 24 2026 · <span style="font-weight:400;opacity:0.7;">Remove this bar once confirmed</span>
-</div>
 <div class="app" id="app"></div>
 
 <script>
@@ -412,6 +409,94 @@ function updateNotifBadge(){
   if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
 }
 
+async function openDBHealthModal(){
+  // Show loading state immediately
+  showModal(`
+    <h3 style="margin-bottom:4px;">Database health check</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">Version 19 · Checking all tables...</p>
+    <div id="db-health-content" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="font-size:13px;color:var(--text-tertiary);text-align:center;padding:20px;">Fetching from Supabase...</div>
+    </div>
+    <div style="border-top:0.5px solid var(--border-light);padding-top:12px;margin-top:16px;">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+    </div>`);
+
+  const wrap=document.getElementById('db-health-content');
+  if(!wrap) return;
+
+  const dot=document.getElementById('db-health-dot');
+  let allGood=true;
+  const results=[];
+
+  // Helper to fetch a table
+  async function checkTable(name,url,desc){
+    try{
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/${url}`,{headers:SB_HEADERS});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.message||'HTTP '+res.status);
+      return{name,desc,ok:true,count:Array.isArray(data)?data.length:1,data};
+    }catch(e){
+      allGood=false;
+      return{name,desc,ok:false,error:e.message,data:[]};
+    }
+  }
+
+  // Check all tables
+  const [clientsRes,notesRes,metricsRes,successRes,onboardingRes,appStateRes]=await Promise.all([
+    checkTable('clients','clients?select=id,name,doctor,email,status,updated_at&order=id','Client profiles'),
+    checkTable('client_notes','client_notes?select=id,client_id,created_by,created_at&order=created_at.desc&limit=5','Recent notes'),
+    checkTable('metrics_tracker','metrics_tracker?select=client_id,period,date_key,updated_at&order=updated_at.desc&limit=5','Metrics entries'),
+    checkTable('success_map','success_map?select=id,client_id,label,created_at&order=created_at.desc&limit=5','Success map scores'),
+    checkTable('onboarding_submissions','onboarding_submissions?select=id,practice_name,email,submitted_at,reviewed&order=submitted_at.desc&limit=5','Onboarding submissions'),
+    checkTable('app_state','app_state?select=id,updated_at','App state'),
+  ]);
+
+  // Build HTML
+  function statusBadge(ok){
+    return ok
+      ?`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#EAF3DE;color:#274F0A;font-weight:600;">✓ OK</span>`
+      :`<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#FCEBEB;color:#791F1F;font-weight:600;">✗ Error</span>`;
+  }
+
+  function tableSection(r){
+    const rows=r.data||[];
+    return`<div style="border:0.5px solid var(--border-light);border-radius:8px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-secondary);border-bottom:${rows.length?'0.5px solid var(--border-light)':'none'};">
+        <div>
+          <span style="font-size:12px;font-weight:500;color:var(--text-primary);">${r.name}</span>
+          <span style="font-size:11px;color:var(--text-tertiary);margin-left:6px;">${r.desc}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--text-tertiary);">${r.ok?r.count+' rows':'—'}</span>
+          ${statusBadge(r.ok)}
+        </div>
+      </div>
+      ${r.ok&&rows.length?`<div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          ${Object.keys(rows[0]).map(k=>`<th style="padding:5px 10px;text-align:left;color:var(--text-tertiary);font-weight:500;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);white-space:nowrap;">${k}</th>`).join('')}
+          ${rows.map(row=>`<tr style="border-top:0.5px solid var(--border-light);">${Object.values(row).map(v=>`<td style="padding:5px 10px;color:var(--text-secondary);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;">${v===null?'<span style="color:var(--text-tertiary);font-style:italic;">null</span>':String(v).length>40?String(v).slice(0,40)+'…':v}</td>`).join('')}</tr>`).join('')}
+        </table>
+      </div>`:''}
+      ${!r.ok?`<div style="padding:8px 12px;font-size:11px;color:#791F1F;">${r.error}</div>`:''}
+    </div>`;
+  }
+
+  // Update dot color
+  if(dot) dot.style.background=allGood?'#22c55e':'#ef4444';
+
+  wrap.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:${allGood?'#EAF3DE':'#FCEBEB'};margin-bottom:4px;">
+      <span style="font-size:13px;font-weight:500;color:${allGood?'#274F0A':'#791F1F'};">${allGood?'✓ All tables reachable':'✗ Some tables have errors'}</span>
+      <span style="font-size:11px;color:${allGood?'#274F0A':'#791F1F'};margin-left:auto;">Checked ${new Date().toLocaleTimeString()}</span>
+    </div>
+    ${tableSection(clientsRes)}
+    ${tableSection(appStateRes)}
+    ${tableSection(notesRes)}
+    ${tableSection(metricsRes)}
+    ${tableSection(successRes)}
+    ${tableSection(onboardingRes)}`;
+}
+
 function openSubmissionsModal(){
   const subs=Array.isArray(S.onboardingSubmissions)?S.onboardingSubmissions:[];
   const unread=subs.filter(s=>!s.reviewed);
@@ -529,6 +614,7 @@ function createClientFromSubmission(id){
     billingContacts:[],
     notesLog:[],
     categoryOverrides:{},
+    categoryColors:{},   // {categoryName: paletteIndex}
     onboardingSubmissionId:id
   };
   S.clients.push(newClient);
@@ -772,6 +858,158 @@ async function loadSubmissions(){
   }
 }
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+
+// ── CATEGORY COLOR SYSTEM ─────────────────────────────────────────────
+const CAT_PALETTE=[
+  {bg:'#E6F1FB',border:'#378ADD',txt:'#0C447C',name:'Blue'},
+  {bg:'#FAEEDA',border:'#D4944A',txt:'#633806',name:'Amber'},
+  {bg:'#E1F5EE',border:'#2DA878',txt:'#085041',name:'Green'},
+  {bg:'#FBEAF0',border:'#C45A7A',txt:'#72243E',name:'Pink'},
+  {bg:'#EEEDFE',border:'#7C6FE0',txt:'#3C3489',name:'Purple'},
+  {bg:'#EAF3DE',border:'#6DA832',txt:'#274F0A',name:'Sage'},
+  {bg:'#FAECE7',border:'#C4623A',txt:'#712B13',name:'Coral'},
+  {bg:'#FCEBEB',border:'#C94848',txt:'#791F1F',name:'Red'},
+  {bg:'#F1EFE8',border:'#888784',txt:'#444441',name:'Gray'},
+];
+const _catColorCache={};
+function getCatColor(cat){
+  if(!cat) return CAT_PALETTE[CAT_PALETTE.length-1];
+  // Check if user has manually assigned a color
+  if(S.categoryColors&&S.categoryColors[cat]!==undefined){
+    return CAT_PALETTE[S.categoryColors[cat]]||CAT_PALETTE[0];
+  }
+  if(_catColorCache[cat]) return _catColorCache[cat];
+  let hash=0;
+  for(let i=0;i<cat.length;i++) hash=(hash*31+cat.charCodeAt(i))&0xffff;
+  const idx=hash%(CAT_PALETTE.length-1);
+  _catColorCache[cat]=CAT_PALETTE[idx];
+  return CAT_PALETTE[idx];
+}
+
+function setCatColor(cat,paletteIdx){
+  if(!S.categoryColors) S.categoryColors={};
+
+  // Check if any OTHER category already uses this color
+  const conflicts=cats().filter(c=>c!==cat&&getCatColor(c)===CAT_PALETTE[paletteIdx]);
+
+  if(conflicts.length>0){
+    // Close the picker first so the prompt is visible
+    closeColorPicker();
+    showCatColorConflictPrompt(cat, paletteIdx, conflicts);
+    return;
+  }
+
+  // No conflict — just apply
+  S.categoryColors[cat]=paletteIdx;
+  delete _catColorCache[cat];
+  save();
+  render();
+  closeColorPicker();
+}
+
+function applyCatColor(cat, paletteIdx){
+  S.categoryColors[cat]=paletteIdx;
+  delete _catColorCache[cat];
+}
+
+function showCatColorConflictPrompt(cat, paletteIdx, conflicts){
+  const color=CAT_PALETTE[paletteIdx];
+  const conflictNames=conflicts.map(c=>`<strong>${esc(c)}</strong>`).join(', ');
+  const swatch=`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color.border};margin-right:4px;vertical-align:middle;"></span>`;
+
+  const existing=document.getElementById('cat-conflict-prompt');
+  if(existing) existing.remove();
+
+  const overlay=document.createElement('div');
+  overlay.id='cat-conflict-prompt';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML=`
+    <div style="background:var(--bg-primary);border-radius:12px;padding:24px 28px;max-width:380px;width:90%;border:0.5px solid var(--border-mid);">
+      <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Duplicate color</div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:20px;">
+        ${swatch}This color is already used by ${conflictNames}.
+        What would you like to do?
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button id="ccp-reassign" style="height:38px;padding:0 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:13px;font-weight:500;cursor:pointer;text-align:left;padding:0 16px;">
+          Assign ${conflictNames} a different color automatically
+        </button>
+        <button id="ccp-keep" style="height:38px;padding:0 16px;border:0.5px solid var(--border-mid);border-radius:8px;background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;text-align:left;">
+          Keep all the same color
+        </button>
+        <button id="ccp-cancel" style="height:34px;padding:0 16px;border:none;border-radius:8px;background:transparent;color:var(--text-tertiary);font-size:12px;cursor:pointer;">
+          Cancel
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // Option 1 — apply to this cat, auto-assign different colors to conflicts
+  document.getElementById('ccp-reassign').onclick=()=>{
+    overlay.remove();
+    applyCatColor(cat, paletteIdx);
+    // Assign each conflicting category the next available color
+    const usedIndices=new Set(Object.values(S.categoryColors||{}));
+    usedIndices.add(paletteIdx);
+    conflicts.forEach(c=>{
+      // Find first palette index not already used
+      let newIdx=0;
+      while(usedIndices.has(newIdx)&&newIdx<CAT_PALETTE.length-1) newIdx++;
+      applyCatColor(c, newIdx);
+      usedIndices.add(newIdx);
+    });
+    save();
+    render();
+  };
+
+  // Option 2 — allow duplicates, keep all the same color
+  document.getElementById('ccp-keep').onclick=()=>{
+    overlay.remove();
+    applyCatColor(cat, paletteIdx);
+    save();
+    render();
+  };
+
+  // Cancel — do nothing
+  document.getElementById('ccp-cancel').onclick=()=>overlay.remove();
+}
+
+let _colorPickerOpen=null;
+function openColorPicker(cat,anchorEl){
+  closeColorPicker();
+  _colorPickerOpen=cat;
+  const rect=anchorEl.getBoundingClientRect();
+  const picker=document.createElement('div');
+  picker.id='cat-color-picker';
+  picker.style.cssText=`position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:10px;padding:10px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.15);`;
+  const label=document.createElement('div');
+  label.style.cssText='font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;';
+  label.textContent='Category color';
+  picker.appendChild(label);
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:6px;';
+  CAT_PALETTE.forEach((c,i)=>{
+    const dot=document.createElement('div');
+    const current=S.categoryColors&&S.categoryColors[cat]===i;
+    dot.style.cssText='display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;';
+    dot.innerHTML=`<div style="width:28px;height:28px;border-radius:50%;background:${c.bg};border:2.5px solid ${current?c.txt:'rgba(0,0,0,0.08)'};transition:transform .1s;"></div><span style="font-size:10px;color:var(--text-tertiary);">${c.name}</span>`;
+    dot.onmouseenter=()=>dot.querySelector('div').style.transform='scale(1.1)';
+    dot.onmouseleave=()=>dot.querySelector('div').style.transform='scale(1)';
+    dot.onclick=(e)=>{e.stopPropagation();setCatColor(cat,i);};
+    grid.appendChild(dot);
+  });
+  picker.appendChild(grid);
+  document.body.appendChild(picker);
+  // Close on outside click
+  setTimeout(()=>document.addEventListener('click',closeColorPicker,{once:true}),0);
+}
+
+function closeColorPicker(){
+  const p=document.getElementById('cat-color-picker');
+  if(p) p.remove();
+  _colorPickerOpen=null;
+}
+
 function cats(){return[...new Set(S.links.map(l=>l.category))].sort();}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function val(id){return(document.getElementById(id)||{}).value||'';}
@@ -841,6 +1079,10 @@ function render(){
     <span class="title-sub">Client Dashboard <span id="sync-dot" title="" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--border-mid);margin-left:6px;vertical-align:middle;transition:background .3s;cursor:default;"></span></span>
   </div>
   <div class="hdr-right">
+    <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
+      <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
+      v19
+    </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -1046,11 +1288,12 @@ function renderClients(){
           ${hasMultiple&&l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:10px;color:${pc.txt};background:${pc.bg};border-radius:3px;padding:1px 6px;flex-shrink:0;white-space:nowrap;font-weight:500;">${esc(l.practice)}</span>`;})():''}
         </div>`;
       }
-      return`<div class="link-chip" data-link-id="${l.id}" onclick="event.stopPropagation();if(event.target.closest('.icon-btn')||event.target.closest('.hidden-icon-wrap'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;" title="${l.url?esc(l.url):'No URL yet — click to add'}">
-        <svg style="width:13px;height:13px;flex-shrink:0;opacity:${l.url?'0.5':'0.25'};" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
+      const cc=getCatColor(l.category);
+      return`<div class="link-chip" data-link-id="${l.id}" onclick="event.stopPropagation();if(event.target.closest('.icon-btn')||event.target.closest('.hidden-icon-wrap')||event.target.closest('.cat-color-dot'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;border-left-color:${cc.border};background:var(--bg-secondary);" title="${l.url?esc(l.url):'No URL yet — click to add'}">
+        <svg style="width:13px;height:13px;flex-shrink:0;opacity:0.5;" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
         <span class="chip-label" style="color:${l.url?'var(--text-primary)':'var(--text-tertiary)'};">${esc(l.label)}</span>
         ${hasMultiple&&l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:10px;color:${pc.txt};background:${pc.bg};border-radius:3px;padding:1px 6px;flex-shrink:0;white-space:nowrap;font-weight:500;">${esc(l.practice)}</span>`;})():''}
-        ${!l.url?'<span style="font-size:10px;color:var(--text-tertiary);font-style:italic;">no url</span>':''}
+        ${!l.url?`<span style="font-size:10px;color:${cc.txt};opacity:0.6;font-style:italic;">no url</span>`:''}
         ${hiddenIcon}
         ${editMode&&!clientMode?`<button class="icon-btn" onclick="event.stopPropagation();openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);">✎</button>
         <button class="icon-btn" onclick="event.stopPropagation();deleteLink(${l.id})" title="Delete">×</button>`:''}
@@ -1209,7 +1452,7 @@ function renderCategory(){
       </div>`;
     });
     html+=`<div class="cat-section">
-      <div class="cat-head"><span class="cat-title">${esc(cat)}</span><span class="cat-count">${catLinks.length} client${catLinks.length!==1?'s':''}</span></div>
+      <div class="cat-head" style="background:${getCatColor(cat).bg};"><span onclick="event.stopPropagation();openColorPicker('${esc(cat)}',this)" style="width:10px;height:10px;border-radius:50%;background:${getCatColor(cat).border};flex-shrink:0;display:inline-block;cursor:pointer;opacity:0.5;" title="Change color"></span><span class="cat-title" style="color:${getCatColor(cat).txt};">${esc(cat)}</span><span class="cat-count">${catLinks.length} client${catLinks.length!==1?'s':''}</span></div>
       <div>${rows||'<div class="crow" style="color:var(--text-tertiary);font-size:13px;">No clients</div>'}</div>
     </div>`;
   });
