@@ -97,7 +97,7 @@
   .icon-btn:hover{color:var(--text-secondary);background:var(--bg-secondary);}
 
   /* link chips */
-  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px 6px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;border-left-width:3px;}
+  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px 6px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;border-left-width:4px;}
   .chip-label{flex:1;color:var(--text-primary);}
   .chip-cat{font-size:11px;color:var(--text-tertiary);}
   .add-row{display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;width:100%;font-family:var(--font);}
@@ -409,6 +409,48 @@ function updateNotifBadge(){
   if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
 }
 
+function openClientPaymentDrilldown(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c) return;
+  const payments=(c.payments||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const total=payments.reduce((sum,p)=>sum+(parseFloat(p.amount)||0),0);
+
+  let rows='';
+  if(!payments.length){
+    rows=`<div style="padding:20px;text-align:center;font-size:13px;color:var(--text-tertiary);font-style:italic;">No payments recorded yet.</div>`;
+  } else {
+    rows=`<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="background:var(--bg-secondary);">
+        <th style="padding:7px 12px;text-align:left;color:var(--text-tertiary);font-weight:500;border-bottom:0.5px solid var(--border-light);">Date</th>
+        <th style="padding:7px 12px;text-align:left;color:var(--text-tertiary);font-weight:500;border-bottom:0.5px solid var(--border-light);">Amount</th>
+        <th style="padding:7px 12px;text-align:left;color:var(--text-tertiary);font-weight:500;border-bottom:0.5px solid var(--border-light);">Note</th>
+        <th style="padding:7px 12px;text-align:left;color:var(--text-tertiary);font-weight:500;border-bottom:0.5px solid var(--border-light);">Recorded</th>
+      </tr></thead>
+      <tbody>${payments.map(p=>`<tr style="border-top:0.5px solid var(--border-light);">
+        <td style="padding:7px 12px;color:var(--text-primary);font-weight:500;">${p.fmt||p.date||'—'}</td>
+        <td style="padding:7px 12px;color:var(--text-primary);">$${Number(p.amount).toLocaleString('en-US',{minimumFractionDigits:2})}</td>
+        <td style="padding:7px 12px;color:var(--text-secondary);">${p.note||'—'}</td>
+        <td style="padding:7px 12px;color:var(--text-tertiary);font-size:11px;">${p.recorded?new Date(p.recorded).toLocaleString():'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <div style="padding:8px 12px;border-top:0.5px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;background:var(--bg-secondary);">
+      <span style="font-size:12px;color:var(--text-secondary);">${payments.length} payment${payments.length!==1?'s':''}</span>
+      <span style="font-size:13px;font-weight:500;color:var(--text-primary);">Total: $${total.toLocaleString('en-US',{minimumFractionDigits:2})}</span>
+    </div>`;
+  }
+
+  showModal(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <button onclick="openDBHealthModal()" style="height:28px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:6px;background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;">← Back</button>
+      <h3>Payment history — ${esc(c.name)}</h3>
+    </div>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:14px;">Loaded from local state (synced from Supabase clients.info)</p>
+    <div style="border:0.5px solid var(--border-light);border-radius:8px;overflow:hidden;">${rows}</div>
+    <div style="border-top:0.5px solid var(--border-light);padding-top:12px;margin-top:14px;">
+      <button class="m-cancel" onclick="closeModal()">Close</button>
+    </div>`);
+}
+
 async function openDBHealthModal(){
   // Show loading state immediately
   showModal(`
@@ -451,6 +493,24 @@ async function openDBHealthModal(){
     checkTable('app_state','app_state?select=id,updated_at','App state'),
   ]);
 
+  // Check billing data inside clients info blob
+  const billingClients=S.clients.filter(c=>c.billing&&(c.billing.monthlyAmount||c.billing.billingDay));
+  const paymentClients=S.clients.filter(c=>c.payments&&c.payments.length>0);
+  const billingRes={
+    name:'Billing & payments',
+    desc:'Stored in clients.info blob',
+    ok:true,
+    count:billingClients.length+' billing configured / '+paymentClients.reduce((a,c)=>a+(c.payments||[]).length,0)+' payments total',
+    data:S.clients.filter(c=>c.billing?.monthlyAmount||c.payments?.length).map(c=>({
+      client:c.name,
+      monthly_rate:c.billing?.monthlyAmount?'$'+Number(c.billing.monthlyAmount).toLocaleString():'—',
+      billing_day:c.billing?.billingDay?'Day '+c.billing.billingDay:'—',
+      payment_count:(c.payments||[]).length,
+      last_payment:(c.payments||[]).length?(c.payments[c.payments.length-1].fmt||c.payments[c.payments.length-1].date):'—',
+      _clientId:c.id
+    }))
+  };
+
   // Build HTML
   function statusBadge(ok){
     return ok
@@ -460,21 +520,29 @@ async function openDBHealthModal(){
 
   function tableSection(r){
     const rows=r.data||[];
-    return`<div style="border:0.5px solid var(--border-light);border-radius:8px;overflow:hidden;">
+    const isBilling=r.name==='Billing & payments';
+    const cols=rows.length?Object.keys(rows[0]).filter(k=>k!=='_clientId'):[];
+    return`<div style="border:0.5px solid var(--border-light);border-radius:8px;overflow:hidden;margin-bottom:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-secondary);border-bottom:${rows.length?'0.5px solid var(--border-light)':'none'};">
         <div>
           <span style="font-size:12px;font-weight:500;color:var(--text-primary);">${r.name}</span>
           <span style="font-size:11px;color:var(--text-tertiary);margin-left:6px;">${r.desc}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:var(--text-tertiary);">${r.ok?r.count+' rows':'—'}</span>
+          <span style="font-size:11px;color:var(--text-tertiary);">${r.ok?r.count:'—'}</span>
           ${statusBadge(r.ok)}
         </div>
       </div>
       ${r.ok&&rows.length?`<div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:11px;">
-          ${Object.keys(rows[0]).map(k=>`<th style="padding:5px 10px;text-align:left;color:var(--text-tertiary);font-weight:500;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);white-space:nowrap;">${k}</th>`).join('')}
-          ${rows.map(row=>`<tr style="border-top:0.5px solid var(--border-light);">${Object.values(row).map(v=>`<td style="padding:5px 10px;color:var(--text-secondary);white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;">${v===null?'<span style="color:var(--text-tertiary);font-style:italic;">null</span>':String(v).length>40?String(v).slice(0,40)+'…':v}</td>`).join('')}</tr>`).join('')}
+          <thead><tr>
+            ${cols.map(k=>`<th style="padding:5px 10px;text-align:left;color:var(--text-tertiary);font-weight:500;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);white-space:nowrap;">${k}</th>`).join('')}
+            ${isBilling?'<th style="padding:5px 10px;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);"></th>':''}
+          </tr></thead>
+          <tbody>${rows.map(row=>`<tr style="border-top:0.5px solid var(--border-light);">
+            ${cols.map(k=>{const v=row[k];return`<td style="padding:5px 10px;color:var(--text-secondary);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;">${v===null||v===undefined?'<span style="color:var(--text-tertiary);font-style:italic;">—</span>':String(v).length>40?String(v).slice(0,40)+'…':v}</td>`;}).join('')}
+            ${isBilling&&row._clientId?`<td style="padding:5px 10px;"><button onclick="openClientPaymentDrilldown(${row._clientId})" style="height:22px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:5px;background:transparent;color:var(--text-secondary);font-size:10px;cursor:pointer;white-space:nowrap;">View all →</button></td>`:''}
+          </tr>`).join('')}</tbody>
         </table>
       </div>`:''}
       ${!r.ok?`<div style="padding:8px 12px;font-size:11px;color:#791F1F;">${r.error}</div>`:''}
@@ -490,6 +558,7 @@ async function openDBHealthModal(){
       <span style="font-size:11px;color:${allGood?'#274F0A':'#791F1F'};margin-left:auto;">Checked ${new Date().toLocaleTimeString()}</span>
     </div>
     ${tableSection(clientsRes)}
+    ${tableSection(billingRes)}
     ${tableSection(appStateRes)}
     ${tableSection(notesRes)}
     ${tableSection(metricsRes)}
@@ -861,15 +930,15 @@ function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,
 
 // ── CATEGORY COLOR SYSTEM ─────────────────────────────────────────────
 const CAT_PALETTE=[
-  {bg:'#E6F1FB',border:'#378ADD',txt:'#0C447C',name:'Blue'},
-  {bg:'#FAEEDA',border:'#D4944A',txt:'#633806',name:'Amber'},
-  {bg:'#E1F5EE',border:'#2DA878',txt:'#085041',name:'Green'},
-  {bg:'#FBEAF0',border:'#C45A7A',txt:'#72243E',name:'Pink'},
-  {bg:'#EEEDFE',border:'#7C6FE0',txt:'#3C3489',name:'Purple'},
-  {bg:'#EAF3DE',border:'#6DA832',txt:'#274F0A',name:'Sage'},
-  {bg:'#FAECE7',border:'#C4623A',txt:'#712B13',name:'Coral'},
-  {bg:'#FCEBEB',border:'#C94848',txt:'#791F1F',name:'Red'},
-  {bg:'#F1EFE8',border:'#888784',txt:'#444441',name:'Gray'},
+  {bg:'#E6F1FB',border:'#1a7fd4',txt:'#0C447C',name:'Blue'},
+  {bg:'#FAEEDA',border:'#e07b0a',txt:'#633806',name:'Amber'},
+  {bg:'#E1F5EE',border:'#18a866',txt:'#085041',name:'Green'},
+  {bg:'#FDEEF6',border:'#f0359a',txt:'#8C1A5A',name:'Pink'},
+  {bg:'#F0EDFB',border:'#9B7FE8',txt:'#5A3DAA',name:'Lilac'},
+  {bg:'#EAF3DE',border:'#4a9e12',txt:'#274F0A',name:'Sage'},
+  {bg:'#FFF0E0',border:'#ff6b00',txt:'#7A3200',name:'Orange'},
+  {bg:'#FCEBEB',border:'#d42020',txt:'#791F1F',name:'Red'},
+  {bg:'#F1EFE8',border:'#6b6966',txt:'#444441',name:'Gray'},
 ];
 const _catColorCache={};
 function getCatColor(cat){
@@ -1452,7 +1521,7 @@ function renderCategory(){
       </div>`;
     });
     html+=`<div class="cat-section">
-      <div class="cat-head" style="background:${getCatColor(cat).bg};"><span onclick="event.stopPropagation();openColorPicker('${esc(cat)}',this)" style="width:10px;height:10px;border-radius:50%;background:${getCatColor(cat).border};flex-shrink:0;display:inline-block;cursor:pointer;opacity:0.5;" title="Change color"></span><span class="cat-title" style="color:${getCatColor(cat).txt};">${esc(cat)}</span><span class="cat-count">${catLinks.length} client${catLinks.length!==1?'s':''}</span></div>
+      <div class="cat-head" style="background:${getCatColor(cat).bg};"><span onclick="event.stopPropagation();openColorPicker('${esc(cat)}',this)" style="width:10px;height:10px;border-radius:50%;background:${getCatColor(cat).border};flex-shrink:0;display:inline-block;cursor:pointer;" title="Change color"></span><span class="cat-title" style="color:${getCatColor(cat).txt};">${esc(cat)}</span><span class="cat-count">${catLinks.length} client${catLinks.length!==1?'s':''}</span></div>
       <div>${rows||'<div class="crow" style="color:var(--text-tertiary);font-size:13px;">No clients</div>'}</div>
     </div>`;
   });
@@ -3217,7 +3286,7 @@ function saveBillingSettings(clientId){
   if(!c.billing) c.billing={};
   c.billing.monthlyAmount=amount||null;
   c.billing.billingDay=day||null;
-  save();closeModal();render();
+  save(clientId);closeModal();render();
 }
 
 function confirmEnableAccounting(){
@@ -3337,7 +3406,7 @@ function saveBulkPayments(clientId){
   window._bulkPayments.forEach(p=>c.payments.push({...p,recorded:new Date().toISOString()}));
   const count=window._bulkPayments.length;
   window._bulkPayments=[];
-  save();closeModal();render();
+  save(clientId);upsertClient(c);closeModal();render();
   showToast(`${count} payment${count!==1?'s':''} recorded`);
 }
 
@@ -3352,7 +3421,7 @@ function doMarkPaid(){
   if(!c)return;
   if(!Array.isArray(c.payments)) c.payments=[];
   c.payments.push({id:Date.now(),amount,date,fmt,note,recorded:new Date().toISOString()});
-  save();closeModal();render();
+  save(clientId);upsertClient(c);closeModal();render();
   showToast('Payment recorded');
 }
 
@@ -3543,7 +3612,7 @@ function doDeletePayment(clientId,payId){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c||!c.payments)return;
   c.payments=c.payments.filter(p=>p.id!==payId);
-  save();openPaymentHistory(clientId);
+  save(clientId);upsertClient(c);openPaymentHistory(clientId);
 }
 
 function openAccountingOverview(){
