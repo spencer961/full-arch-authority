@@ -622,7 +622,7 @@ function App(){
         <div style={{background:BG,minHeight:"100vh"}}>
           <Hdr sub="Onboarding Form" practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
             <button onClick={()=>setEditingForm(false)} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Cancel</button>
-            <button onClick={saveFormAnswers} style={{...BTNP,background:GOLD}}>Save Form Answers ✓</button>
+            <button onClick={saveFormAnswers} style={{...BTNP,background:GOLD,color:NAVY}}>Save Form Answers ✓</button>
           </div>}/>
           <div style={{height:4,background:"rgba(255,255,255,0.1)"}}><div style={{height:"100%",width:((editStep+1)/formSecs.length*100)+"%",background:GOLD,transition:"width 0.4s"}}/></div>
           <div style={{maxWidth:640,margin:"0 auto",padding:"36px 20px 80px"}}>
@@ -658,7 +658,7 @@ function App(){
                   {editStep<formSecs.length-1?(
                     <button onClick={()=>setEditStep(s=>s+1)} style={BTNP}>Next →</button>
                   ):(
-                    <button onClick={saveFormAnswers} style={{...BTNP,background:GOLD}}>Save Form ✓</button>
+                    <button onClick={saveFormAnswers} style={{...BTNP,background:GOLD,color:NAVY}}>Save Form ✓</button>
                   )}
                 </div>
               </div>
@@ -676,7 +676,7 @@ function App(){
           <button onClick={()=>startEditForm(client)} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>
             {hasAnswers?"Edit Form":"Fill Onboarding Form"}
           </button>
-          <button onClick={()=>startAssessment(selClient,client.snapshots.length>0?{...client.snapshots[client.snapshots.length-1].scores}:undefined)} style={{...BTNP,background:GOLD}}>
+          <button onClick={()=>startAssessment(selClient,client.snapshots.length>0?{...client.snapshots[client.snapshots.length-1].scores}:undefined)} style={{...BTNP,background:GOLD,color:NAVY}}>
             {client.snapshots.length===0?"Start Initial Assessment →":"New Monthly Assessment →"}
           </button>
         </div>}/>
@@ -742,7 +742,7 @@ function App(){
         <GearModal/>
         <Hdr sub={(isInitial?"Initial":"Monthly")+" Assessment"} practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
           <button onClick={()=>setSubview(isInitial?"form-review":"client-map")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Cancel</button>
-          <button onClick={publishSnapshot} disabled={!assLabel.trim()} style={{...BTNP,background:GOLD,opacity:assLabel.trim()?1:0.5}}>Publish Assessment →</button>
+          <button onClick={publishSnapshot} disabled={!assLabel.trim()} style={{...BTNP,background:GOLD,color:NAVY,opacity:assLabel.trim()?1:0.5}}>Publish Assessment →</button>
         </div>}/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 320px",flex:1,overflow:"hidden"}}>
           <div style={{overflowY:"auto",padding:"20px"}}>
@@ -807,7 +807,7 @@ function App(){
           <div style={{background:BG,minHeight:"100vh"}}>
             <Hdr sub={det.label} practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
               <button onClick={()=>setSelM(null)} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← All Months</button>
-              <button onClick={()=>startAssessment(selClient,lat?{...lat.scores}:undefined)} style={{...BTNP,background:GOLD,fontSize:12,padding:"7px 14px"}}>+ New Month</button>
+              <button onClick={()=>startAssessment(selClient,lat?{...lat.scores}:undefined)} style={{...BTNP,background:GOLD,color:NAVY,fontSize:12,padding:"7px 14px"}}>+ New Month</button>
             </div>}/>
             <div style={{maxWidth:1060,margin:"0 auto",padding:"24px 20px"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:20}}>
@@ -945,7 +945,7 @@ function App(){
         <Hdr sub="Success Map" practiceName={client.answers.practiceName} right={<div style={{display:"flex",gap:8,alignItems:"center"}}>
           <button onClick={()=>{setSelM(null);setSubview("dashboard");}} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>← Dashboard</button>
           <button onClick={()=>setSubview("form-review")} style={{background:"rgba(255,255,255,0.1)",border:"0.5px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.7)",padding:"6px 12px",borderRadius:6,cursor:"pointer",fontSize:12}}>View Form</button>
-          <button onClick={()=>startAssessment(selClient,lat?{...lat.scores}:undefined)} style={{...BTNP,background:GOLD,fontSize:12,padding:"7px 16px"}}>+ New Month Assessment</button>
+          <button onClick={()=>startAssessment(selClient,lat?{...lat.scores}:undefined)} style={{...BTNP,background:GOLD,color:NAVY,fontSize:12,padding:"7px 16px"}}>+ New Month Assessment</button>
         </div>}/>
         <div style={{maxWidth:1060,margin:"0 auto",padding:"24px 20px"}}>
           {/* Summary card */}
