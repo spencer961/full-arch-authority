@@ -248,8 +248,13 @@ function addClientNote(clientId){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c)return;
   if(!Array.isArray(c.notesLog)) c.notesLog=[];
-  c.notesLog.push({date:fmtDate(),text,edited:false});
-  save();const _sc=S.clients.find(x=>x.id===clientId);if(_sc)upsertClient(_sc);pushToSupabase();pushToSupabase();openDetail(clientId);
+  const note={date:fmtDate(),text,edited:false,createdAt:new Date().toISOString()};
+  c.notesLog.push(note);
+  // Save to client_notes table + update client blob
+  saveNoteToDB(clientId, note).then(dbId=>{
+    if(dbId) note.dbId=dbId;
+  });
+  save();upsertClient(c);pushToSupabase();openDetail(clientId);
 }
 
 function startEditClientNote(clientId,noteIdx){
@@ -289,7 +294,9 @@ function saveClientNoteEdit(clientId,noteIdx){
   entry.text=newText;
   entry.editedAt=fmtDate();
   entry.edited=true;
-  save();pushToSupabase();openDetail(clientId);
+  // Update in client_notes table if we have a dbId
+  if(entry.dbId) saveNoteToDB(clientId, entry);
+  save();upsertClient(c);pushToSupabase();openDetail(clientId);
 }
 
 function viewClientNoteHistory(clientId,noteIdx){
@@ -326,8 +333,11 @@ function inlineDeleteClientNote(clientId,noteIdx){
 function doDeleteClientNote(clientId,noteIdx){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c||!Array.isArray(c.notesLog))return;
+  const note=c.notesLog[noteIdx];
+  // Delete from client_notes table if we have a dbId
+  if(note&&note.dbId) deleteNoteFromDB(note.dbId);
   c.notesLog.splice(noteIdx,1);
-  save();pushToSupabase();openDetail(clientId);
+  save();upsertClient(c);pushToSupabase();openDetail(clientId);
 }
 
 function showHiddenTooltip(e,text){
@@ -1276,7 +1286,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v55
+      v56
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1492,7 +1502,9 @@ function renderClients(){
     const metaParts=[inf.doctor,inf.timezone?inf.timezone.split('—')[0].trim():''].filter(Boolean);
     const metaLine=metaParts.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-top:1px;line-height:1.4;">${esc(metaParts.join(' · '))}</div>`:'';
     const payments=Array.isArray(c.payments)?c.payments:[];
-    const lastPay=payments.length?payments[payments.length-1]:null;
+    // Sort by date to get the most recent payment regardless of insertion order
+    const sortedPayments=[...payments].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const lastPay=sortedPayments.length?sortedPayments[0]:null;
     const billing=c.billing||{};
     const monthlyAmt=billing.monthlyAmount?`$${Number(billing.monthlyAmount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`:'';
     const billingDay=billing.billingDay?parseInt(billing.billingDay):null;
@@ -3457,7 +3469,12 @@ function doImportBackup(){
 
 function switchView(v){view=v;filter='all';render();}
 function setFilter(f){filter=f;render();}
-function openDetail(id){detailId=id;render();}
+function openDetail(id){
+  detailId=id;
+  // Load fresh notes from client_notes table
+  if(id) loadNotesFromDB(id).then(()=>render());
+  else render();
+}
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
@@ -3687,7 +3704,11 @@ function saveBulkPayments(clientId){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c||!window._bulkPayments.length)return;
   if(!Array.isArray(c.payments)) c.payments=[];
-  window._bulkPayments.forEach(p=>c.payments.push({...p,recorded:new Date().toISOString()}));
+  window._bulkPayments.forEach(p=>{
+    c.payments.push({...p,id:Date.now()+Math.random(),recorded:new Date().toISOString()});
+  });
+  // Sort all payments by date so most recent is always findable correctly
+  c.payments.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const count=window._bulkPayments.length;
   window._bulkPayments=[];
   save(clientId);upsertClient(c);pushToSupabase();closeModal();render();
@@ -3705,6 +3726,7 @@ function doMarkPaid(){
   if(!c)return;
   if(!Array.isArray(c.payments)) c.payments=[];
   c.payments.push({id:Date.now(),amount,date,fmt,note,recorded:new Date().toISOString()});
+  c.payments.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   save(clientId);upsertClient(c);pushToSupabase();closeModal();render();
   showToast('Payment recorded');
 }
@@ -3712,7 +3734,7 @@ function doMarkPaid(){
 function openPaymentHistory(clientId){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c)return;
-  const payments=Array.isArray(c.payments)?[...c.payments].reverse():[];
+  const payments=Array.isArray(c.payments)?[...c.payments].sort((a,b)=>(b.date||'').localeCompare(a.date||'')):[];
   const total=payments.reduce((sum,p)=>sum+Number(p.amount),0);
 
   const years=[...new Set(payments.map(p=>p.date.slice(0,4)))].sort().reverse();
