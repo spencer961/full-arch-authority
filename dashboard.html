@@ -141,7 +141,8 @@
   .detail-card-val{font-size:13px;color:var(--text-primary);line-height:1.6;}
   .detail-section-title{font-size:14px;font-weight:500;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px solid var(--accent2);padding-bottom:6px;}
   .links-table{display:flex;flex-direction:column;gap:6px;}
-  .lt-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);flex-wrap:wrap;}
+  .lt-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);flex-wrap:wrap;border-left-width:4px;transition:transform .15s ease,box-shadow .15s ease,background .15s ease;}
+  .lt-row:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.08);background:rgba(11,29,94,0.04) !important;}
   .lt-label{font-size:13px;color:var(--text-primary);flex:1;min-width:80px;}
   .lt-cat{font-size:11px;color:var(--text-tertiary);background:var(--bg-secondary);border-radius:4px;padding:2px 7px;}
   .lt-url{font-size:11px;color:var(--text-tertiary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -174,6 +175,21 @@ const COLORS=[
   {bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},
   {bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},
   {bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'}
+];
+
+const PRACTICE_PALETTE=[
+  {bg:'#E6F1FB',txt:'#0C447C',border:'#1a7fd4',name:'Blue'},
+  {bg:'#FAEEDA',txt:'#633806',border:'#e07b0a',name:'Amber'},
+  {bg:'#E1F5EE',txt:'#085041',border:'#18a866',name:'Green'},
+  {bg:'#FDEEF6',txt:'#8C1A5A',border:'#f0359a',name:'Pink'},
+  {bg:'#F0EDFB',txt:'#5A3DAA',border:'#9B7FE8',name:'Lilac'},
+  {bg:'#EAF3DE',txt:'#274F0A',border:'#4a9e12',name:'Sage'},
+  {bg:'#FFF0E0',txt:'#7A3200',border:'#ff6b00',name:'Orange'},
+  {bg:'#FCEBEB',txt:'#791F1F',border:'#d42020',name:'Red'},
+  {bg:'#F1EFE8',txt:'#444441',border:'#6b6966',name:'Gray'},
+  {bg:'#E0F7FB',txt:'#006b82',border:'#00b4d8',name:'Cyan'},
+  {bg:'#F5EDE4',txt:'#7a4315',border:'#bc6c25',name:'Brown'},
+  {bg:'#E8EEF8',txt:'#1a3a6b',border:'#3461b5',name:'Navy'},
 ];
 
 const DEFAULTS={
@@ -1260,7 +1276,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v51
+      v55
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1421,16 +1437,7 @@ function renderClients(){
       }
       return true;
     });
-    const PRACTICE_PALETTE=[
-      {bg:'#E6F1FB',txt:'#0C447C'},
-      {bg:'#FAEEDA',txt:'#633806'},
-      {bg:'#E1F5EE',txt:'#085041'},
-      {bg:'#FBEAF0',txt:'#72243E'},
-      {bg:'#EEEDFE',txt:'#3C3489'},
-      {bg:'#EAF3DE',txt:'#274F0A'},
-      {bg:'#FAECE7',txt:'#712B13'},
-      {bg:'#FCEBEB',txt:'#791F1F'},
-    ];
+
     const storedColors=c.practiceColors||{};
     const practiceColorMap={};
     practices.forEach((p,i)=>{
@@ -1700,6 +1707,13 @@ function renderDetail(app){
   const hasMultiplePractices=practices.length>1;
   const detailActivePractice=window._detailPractice&&window._detailPractice.clientId===c.id?window._detailPractice.val:null;
 
+  // Build practice color map — same as card rendering
+  const storedPracticeColors=c.practiceColors||{};
+  const practiceColorMap={};
+  practices.forEach((p,i)=>{
+    practiceColorMap[p]=storedPracticeColors[p]||PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
+  });
+
   const visibleLinks=links.filter(l=>{
     if(hasMultiplePractices&&detailActivePractice&&l.practice&&l.practice!==detailActivePractice) return false;
     if(clientMode){
@@ -1714,20 +1728,23 @@ function renderDetail(app){
 
   const practiceTabBar=hasMultiplePractices?`
     <div style="display:flex;gap:0;flex-wrap:wrap;margin-bottom:10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;width:fit-content;">
-      <button onclick="window._detailPractice={clientId:${c.id},val:null};renderDetail(document.getElementById('app'))" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:var(--font);background:${!detailActivePractice?'var(--bg-tertiary)':'transparent'};color:${!detailActivePractice?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${!detailActivePractice?'500':'400'};border-right:0.5px solid var(--border-light);border-bottom:${!detailActivePractice?'2px solid var(--text-primary)':'2px solid transparent'};">All</button>
-      ${practices.map((p,i)=>`<button onclick="window._detailPractice={clientId:${c.id},val:'${esc(p)}'};renderDetail(document.getElementById('app'))" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:var(--font);background:transparent;color:${detailActivePractice===p?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${detailActivePractice===p?'500':'400'};${i<practices.length-1?'border-right:0.5px solid var(--border-light);':''}border-bottom:${detailActivePractice===p?'2px solid var(--text-primary)':'2px solid transparent'};">${esc(p)}</button>`).join('')}
+      <button class="prac-tab" onclick="window._detailPractice={clientId:${c.id},val:null};renderDetail(document.getElementById('app'))" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:var(--font);background:${!detailActivePractice?'var(--bg-tertiary)':'transparent'};color:${!detailActivePractice?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${!detailActivePractice?'500':'400'};border-right:0.5px solid var(--border-light);border-bottom:${!detailActivePractice?'2px solid var(--text-primary)':'2px solid transparent'};">All</button>
+      ${practices.map((p,i)=>`<button class="prac-tab" onclick="window._detailPractice={clientId:${c.id},val:'${esc(p)}'};renderDetail(document.getElementById('app'))" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:var(--font);background:transparent;color:${detailActivePractice===p?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${detailActivePractice===p?'500':'400'};${i<practices.length-1?'border-right:0.5px solid var(--border-light);':''}border-bottom:${detailActivePractice===p?'2px solid var(--text-primary)':'2px solid transparent'};">${esc(p)}</button>`).join('')}
     </div>`:'';
 
-  const linksHtml=visibleLinks.map(l=>`
-    <div class="lt-row">
+  const linksHtml=visibleLinks.map(l=>{
+    const cc=getCatColor(l.category);
+    return`
+    <div class="lt-row" style="border-left-color:${cc.border};">
       <span class="lt-label">${esc(l.label)}</span>
       <span class="lt-cat">${esc(l.category)}</span>
-      ${l.practice?`<span style="font-size:11px;color:var(--text-tertiary);background:var(--bg-secondary);border-radius:4px;padding:1px 6px;">${esc(l.practice)}</span>`:''}
+      ${l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:11px;color:${pc.txt};background:${pc.bg};border-radius:4px;padding:1px 6px;font-weight:500;">${esc(l.practice)}</span>`;})():''}
       <span class="lt-url" title="${esc(l.url)}">${esc(l.url)}</span>
       <button class="open-btn" onclick="window.open('${esc(l.url)}','_blank')">Open</button>
       ${clientMode?'':`<button class="icon-btn" onclick="openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);">✎</button>
       <button class="icon-btn" onclick="deleteLink(${l.id})" title="Delete">×</button>`}
-    </div>`).join('')||'<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;padding:.5rem 0;">No files yet.</div>';
+    </div>`;
+  }).join('')||'<div style="font-size:13px;color:var(--text-tertiary);font-style:italic;padding:.5rem 0;">No files yet.</div>';
 
   const CLIENT_MODE_FIELDS=['doctor','timezone','numLocations','locations'];
   const fields=clientMode
@@ -2384,20 +2401,7 @@ function openClientModal(id){
   }).join('');
   const practices=c?getPractices(c):[c?c.name:''];
   const storedPracticeColors=c&&c.practiceColors?c.practiceColors:{};
-  const PRACTICE_PALETTE=[
-    {bg:'#E6F1FB',txt:'#0C447C',border:'#1a7fd4',name:'Blue'},
-    {bg:'#FAEEDA',txt:'#633806',border:'#e07b0a',name:'Amber'},
-    {bg:'#E1F5EE',txt:'#085041',border:'#18a866',name:'Green'},
-    {bg:'#FDEEF6',txt:'#8C1A5A',border:'#f0359a',name:'Pink'},
-    {bg:'#F0EDFB',txt:'#5A3DAA',border:'#9B7FE8',name:'Lilac'},
-    {bg:'#EAF3DE',txt:'#274F0A',border:'#4a9e12',name:'Sage'},
-    {bg:'#FFF0E0',txt:'#7A3200',border:'#ff6b00',name:'Orange'},
-    {bg:'#FCEBEB',txt:'#791F1F',border:'#d42020',name:'Red'},
-    {bg:'#F1EFE8',txt:'#444441',border:'#6b6966',name:'Gray'},
-    {bg:'#E0F7FB',txt:'#006b82',border:'#00b4d8',name:'Cyan'},
-    {bg:'#F5EDE4',txt:'#7a4315',border:'#bc6c25',name:'Brown'},
-    {bg:'#E8EEF8',txt:'#1a3a6b',border:'#3461b5',name:'Navy'},
-  ];
+
   const practicesHtml=practices.map((p,i)=>{
     const curColor=storedPracticeColors[p]||PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
     return`<div id="prac-row-${i}" draggable="true" ondragstart="pracDragStart(event,${i})" ondragover="pracDragOver(event)" ondrop="pracDrop(event,${i})" ondragend="pracDragEnd()" style="display:flex;align-items:center;gap:6px;margin-bottom:7px;cursor:default;">
@@ -2703,11 +2707,7 @@ function addPracticeField(){
   if(!editor)return;
   const existing=editor.querySelectorAll('[id^="prac-row-"]');
   const i=existing.length;
-  const PRACTICE_PALETTE=[
-    {bg:'#E6F1FB',txt:'#0C447C',name:'Blue'},{bg:'#FAEEDA',txt:'#633806',name:'Amber'},{bg:'#E1F5EE',txt:'#085041',name:'Green'},
-    {bg:'#FBEAF0',txt:'#72243E',name:'Pink'},{bg:'#EEEDFE',txt:'#3C3489',name:'Purple'},{bg:'#EAF3DE',txt:'#274F0A',name:'Sage'},
-    {bg:'#FAECE7',txt:'#712B13',name:'Coral'},{bg:'#FCEBEB',txt:'#791F1F',name:'Red'},{bg:'#F1EFE8',txt:'#444441',name:'Gray'},
-  ];
+
   const col=PRACTICE_PALETTE[i%PRACTICE_PALETTE.length];
   const opts=PRACTICE_PALETTE.map((c,ci)=>`<option value="${ci}"${ci===i%PRACTICE_PALETTE.length?' selected':''}>${c.name}</option>`).join('');
   const div=document.createElement('div');
