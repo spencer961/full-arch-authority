@@ -71,13 +71,15 @@
   .top-bar input:focus{outline:none;border-color:var(--border-strong);}
   .btn-primary{height:36px;padding:0 16px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);font-weight:500;}
   .btn-primary:hover{opacity:.82;}
-  .btn-ghost{height:36px;padding:0 14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);}
+  .btn-ghost{height:36px;padding:0 14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);transition:background .15s ease,color .15s ease,border-color .15s ease;}
+  .btn-ghost:hover,.btn-ghost:focus{background:rgba(11,29,94,0.06) !important;color:var(--text-primary) !important;border-color:rgba(11,29,94,0.3) !important;}
   .btn-ghost:hover{background:var(--bg-secondary);}
 
   /* tabs */
   .view-tabs{display:flex;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;width:fit-content;margin-bottom:1.25rem;}
-  .vtab{padding:8px 18px;font-size:13px;cursor:pointer;background:transparent;border:none;color:var(--text-secondary);border-right:0.5px solid var(--border-light);font-family:var(--font);}
+  .vtab{padding:8px 18px;font-size:13px;cursor:pointer;background:transparent;border:none;color:var(--text-secondary);border-right:0.5px solid var(--border-light);font-family:var(--font);transition:background .15s ease,color .15s ease;}
   .vtab:last-child{border-right:none;}
+  .vtab:not(.active):hover{background:rgba(11,29,94,0.06);color:var(--text-primary);}
   .vtab.active{background:var(--accent);color:#fff;border-bottom:2px solid var(--accent2);}
 
   /* pills */
@@ -97,8 +99,10 @@
   .icon-btn:hover{color:var(--text-secondary);background:var(--bg-secondary);}
 
   /* link chips */
-  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px 6px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;border-left-width:4px;}
-  .chip-label{flex:1;color:var(--text-primary);}
+  .link-chip{display:flex;align-items:center;gap:5px;padding:6px 9px 6px 10px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-secondary);font-size:12px;border-left-width:4px;transition:transform .15s ease,box-shadow .15s ease,background .15s ease;}
+  .link-chip:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.08);background:rgba(11,29,94,0.07) !important;}
+  .prac-tab{transition:background .15s ease,color .15s ease;}
+  .prac-tab:hover{background:rgba(11,29,94,0.06) !important;color:var(--text-primary) !important;}
   .chip-cat{font-size:11px;color:var(--text-tertiary);}
   .add-row{display:flex;align-items:center;gap:5px;padding:5px 9px;border:0.5px dashed var(--border-mid);border-radius:var(--radius-md);color:var(--text-tertiary);font-size:12px;cursor:pointer;background:none;width:100%;font-family:var(--font);}
   .add-row:hover{color:var(--text-secondary);}
@@ -164,6 +168,7 @@
 <body>
 <div class="app" id="app"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const COLORS=[
   {bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},
@@ -228,7 +233,7 @@ function addClientNote(clientId){
   if(!c)return;
   if(!Array.isArray(c.notesLog)) c.notesLog=[];
   c.notesLog.push({date:fmtDate(),text,edited:false});
-  save();openDetail(clientId);
+  save();const _sc=S.clients.find(x=>x.id===clientId);if(_sc)upsertClient(_sc);pushToSupabase();pushToSupabase();openDetail(clientId);
 }
 
 function startEditClientNote(clientId,noteIdx){
@@ -268,7 +273,7 @@ function saveClientNoteEdit(clientId,noteIdx){
   entry.text=newText;
   entry.editedAt=fmtDate();
   entry.edited=true;
-  save();openDetail(clientId);
+  save();pushToSupabase();openDetail(clientId);
 }
 
 function viewClientNoteHistory(clientId,noteIdx){
@@ -306,7 +311,7 @@ function doDeleteClientNote(clientId,noteIdx){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c||!Array.isArray(c.notesLog))return;
   c.notesLog.splice(noteIdx,1);
-  save();openDetail(clientId);
+  save();pushToSupabase();openDetail(clientId);
 }
 
 function showHiddenTooltip(e,text){
@@ -739,7 +744,7 @@ function createClientFromSubmission(id){
   };
   S.clients.push(newClient);
   sub.linkedClientId=newId;
-  save();render();
+  save();const _nc=S.clients.find(x=>x.id===clientId);if(_nc)upsertClient(_nc);pushToSupabase();render();
   showToast(`"${newClient.name}" created from onboarding form`);
   openClientModal(newId);
 }
@@ -1019,7 +1024,7 @@ function setCatColorCustom(cat,colorObj){
   }
   S.categoryColors[cat]=colorObj;
   delete _catColorCache[cat];
-  save();render();closeColorPicker();
+  save();const _nc=S.clients.find(x=>x.id===clientId);if(_nc)upsertClient(_nc);pushToSupabase();render();closeColorPicker();
 }
 
 function applyCatColor(cat,val){
@@ -1038,7 +1043,7 @@ function setCatColor(cat,paletteIdx){
   }
   S.categoryColors[cat]=paletteIdx;
   delete _catColorCache[cat];
-  save();render();closeColorPicker();
+  save();const _nc=S.clients.find(x=>x.id===clientId);if(_nc)upsertClient(_nc);pushToSupabase();render();closeColorPicker();
 }
 
 function showCatColorConflictPrompt(cat,paletteIdxOrObj,conflicts){
@@ -1083,13 +1088,13 @@ function showCatColorConflictPrompt(cat,paletteIdxOrObj,conflicts){
       applyCatColor(c,newIdx);
       usedBorders.add(CAT_PALETTE[newIdx].border);
     });
-    save();render();
+    save();pushToSupabase();render();
   };
 
   document.getElementById('ccp-keep').onclick=()=>{
     overlay.remove();
     applyCatColor(cat,paletteIdxOrObj);
-    save();render();
+    save();pushToSupabase();render();
   };
 
   document.getElementById('ccp-cancel').onclick=()=>overlay.remove();
@@ -1255,7 +1260,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v23
+      v51
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1400,7 +1405,7 @@ function renderClients(){
         ${row.map((t,ti)=>{
           const isAll=t.val===null;
           const isActive=t.val===curPractice;
-          return`<button onclick="event.stopPropagation();activePractice[${c.id}]=${t.val===null?'null':`'${esc(t.val)}'`};render()" style="${isAll?'flex:0 0 36px;':'flex:1;'}padding:5px 6px;font-size:11px;border:none;cursor:pointer;font-family:var(--font);background:${isAll?'var(--bg-tertiary)':'transparent'};color:${isActive?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${isActive?'500':'400'};border-right:${ti<row.length-1?'0.5px solid var(--border-light)':'none'};border-bottom:${isActive?'2px solid var(--text-primary)':'2px solid transparent'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.label)}</button>`;
+          return`<button class="prac-tab" onclick="event.stopPropagation();activePractice[${c.id}]=${t.val===null?'null':`'${esc(t.val)}'`};render()" style="${isAll?'flex:0 0 36px;':'flex:1;'}padding:5px 6px;font-size:11px;border:none;cursor:pointer;font-family:var(--font);background:${isAll?'var(--bg-tertiary)':'transparent'};color:${isActive?'var(--text-primary)':'var(--text-tertiary)'};font-weight:${isActive?'500':'400'};border-right:${ti<row.length-1?'0.5px solid var(--border-light)':'none'};border-bottom:${isActive?'2px solid var(--text-primary)':'2px solid transparent'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.label)}</button>`;
         }).join('')}
       </div>`).join('')}
     </div>`:'';
@@ -1463,11 +1468,11 @@ function renderClients(){
         </div>`;
       }
       const cc=getCatColor(l.category);
-      return`<div class="link-chip" data-link-id="${l.id}" onclick="event.stopPropagation();if(event.target.closest('.icon-btn')||event.target.closest('.hidden-icon-wrap')||event.target.closest('.cat-color-dot'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;border-left-color:${cc.border};background:var(--bg-secondary);" title="${l.url?esc(l.url):'No URL yet — click to add'}">
+      return`<div class="link-chip" data-link-id="${l.id}" onclick="event.stopPropagation();if(event.target.closest('.icon-btn')||event.target.closest('.hidden-icon-wrap')||event.target.closest('.cat-color-dot'))return;${l.url?`window.open('${esc(l.url)}','_blank')`:'openLinkModal('+l.id+',null)'}" style="cursor:pointer;border-left-color:${cc.border};" title="${l.url?esc(l.url):'No URL yet — click to add'}">
         <svg style="width:13px;height:13px;flex-shrink:0;opacity:0.5;" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-width="1"/><line x1="5" y1="5.5" x2="5" y2="12" stroke="currentColor" stroke-width="1"/></svg>
         <span class="chip-label" style="color:${l.url?'var(--text-primary)':'var(--text-tertiary)'};">${esc(l.label)}</span>
         ${hasMultiple&&l.practice?(()=>{const pc=practiceColorMap[l.practice]||PRACTICE_PALETTE[0];return`<span style="font-size:10px;color:${pc.txt};background:${pc.bg};border-radius:3px;padding:1px 6px;flex-shrink:0;white-space:nowrap;font-weight:500;">${esc(l.practice)}</span>`;})():''}
-        ${!l.url?`<span style="font-size:10px;color:${cc.txt};opacity:0.6;font-style:italic;">no url</span>`:''}
+        ${!l.url?`<span style="font-size:10px;color:var(--text-tertiary);font-style:italic;">no url</span>`:''}
         ${hiddenIcon}
         ${editMode&&!clientMode?`<button class="icon-btn" onclick="event.stopPropagation();openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);">✎</button>
         <button class="icon-btn" onclick="event.stopPropagation();deleteLink(${l.id})" title="Delete">×</button>`:''}
@@ -1601,7 +1606,7 @@ function saveFileOrder(clientId,forAll){
     S.links=[...otherLinks,...newOrder];
   }
   reorderClientId=null;
-  save();render();
+  save();pushToSupabase();render();
   showToast(forAll?'File order saved for all clients':'File order saved');
 }
 
@@ -1672,16 +1677,17 @@ function renderQueue(){
 function toggleQueueDone(key){
   if(!S.queueDone) S.queueDone={};
   S.queueDone[key]=!S.queueDone[key];
-  save();
+  save();pushToSupabase();
   renderQueue();
 }
 
 function resetQueue(){
-  showInlineConfirm(
-    document.querySelector('.vtab.active')||document.body,
-    'Reset all queue progress?',
-    ()=>{S.queueDone={};save();renderQueue();showToast('Queue reset');}
-  );
+  if(!confirm('Reset all queue progress? This will clear all done items.')) return;
+  S.queueDone={};
+  save();
+  pushToSupabase();
+  renderQueue();
+  showToast('Queue reset ✓');
 }
 
 function renderDetail(app){
@@ -2216,7 +2222,7 @@ function doSaveStaffProfile(clientId,staffIdx){
   staffArr[staffIdx].phone=(document.getElementById('sp-phone')||{}).value||'';
   staffArr[staffIdx].email=(document.getElementById('sp-email')||{}).value||'';
   c.info.staff=JSON.stringify(staffArr);
-  save();closeModal();renderDetail(document.getElementById('app'));
+  const _ssc=S.clients.find(x=>x.id===clientId);if(_ssc)upsertClient(_ssc);save();pushToSupabase();closeModal();renderDetail(document.getElementById('app'));
 }
 
 function addStaffNote(clientId,staffIdx){confirmAddNote(clientId,staffIdx);}
@@ -2690,8 +2696,6 @@ function cancelRemovePracticeRow(idx,btn){
 function confirmRemovePracticeField(btn){removePracticeRow(btn);}
 function doRemovePracticeRow(){}
 function doRemovePracticeField(){}
-function removePracticeField(){}
-
 function initPracticeDragSort(){}
 
 function addPracticeField(){
@@ -2770,7 +2774,8 @@ function saveClientModal(id){
     S.clients.push({id:S.nCid++,name,ci:S.clients.length%COLORS.length,info,practices:practices.length>1?practices:null,practiceColors,billingContacts});
   }
   const savedId=id||S.clients[S.clients.length-1]?.id;
-  save(savedId);render();
+  const _scc=S.clients.find(x=>x.id===savedId);
+  save(savedId);if(_scc)upsertClient(_scc);pushToSupabase();render();
   openClientModal(savedId);
   showToast('Saved ✓');
 }
@@ -3111,6 +3116,15 @@ function saveAdvancedFields(clientId,applyAll){
     setClientFieldsTemp(clientId,validFields);
   }
   save();
+  // Push affected client(s) to Supabase
+  if(applyAll){
+    S.clients.forEach(c=>upsertClient(c));
+  } else {
+    const cid=clientId==='null'?null:parseInt(clientId);
+    const c=cid?S.clients.find(x=>x.id===cid):null;
+    if(c) upsertClient(c);
+  }
+  pushToSupabase();
   render();
   openClientModal(clientId==='null'?null:parseInt(clientId));
 }
@@ -3274,7 +3288,7 @@ function doDeleteClient(id){
   S.links=S.links.filter(l=>l.clientId!==id);
   if(filter===id)filter='all';
   if(detailId===id)detailId=null;
-  save();closeModal();render();
+  save();pushToSupabase();closeModal();render();
 }
 
 function inlineConfirm(el,label,onConfirm){
@@ -3338,7 +3352,7 @@ function doDeleteCategoryAllClients(cat){
   S.links=S.links.filter(l=>l.category!==cat);
   if(Array.isArray(S.hiddenCategories)) S.hiddenCategories=S.hiddenCategories.filter(c=>c!==cat);
   S.clients.forEach(c=>{if(c.categoryOverrides) delete c.categoryOverrides[cat];});
-  save();closeModal();render();
+  save();pushToSupabase();closeModal();render();
   showToast(`"${cat}" removed from all clients`);
 }
 
@@ -3390,7 +3404,7 @@ function addClient(){
   if(!name)return;
   S.clients.push({id:S.nCid++,name,ci:S.clients.length%COLORS.length,info:{}});
   inp.value='';
-  save();render();
+  save();pushToSupabase();render();
 }
 
 function exportBackup(){
@@ -3555,7 +3569,8 @@ function saveBillingSettings(clientId){
   if(!c.billing) c.billing={};
   c.billing.monthlyAmount=amount||null;
   c.billing.billingDay=day||null;
-  save(clientId);closeModal();render();
+  save(clientId);upsertClient(c);pushToSupabase();closeModal();render();
+  showToast('Billing settings saved ✓');
 }
 
 function confirmEnableAccounting(){
@@ -3675,7 +3690,7 @@ function saveBulkPayments(clientId){
   window._bulkPayments.forEach(p=>c.payments.push({...p,recorded:new Date().toISOString()}));
   const count=window._bulkPayments.length;
   window._bulkPayments=[];
-  save(clientId);upsertClient(c);closeModal();render();
+  save(clientId);upsertClient(c);pushToSupabase();closeModal();render();
   showToast(`${count} payment${count!==1?'s':''} recorded`);
 }
 
@@ -3690,7 +3705,7 @@ function doMarkPaid(){
   if(!c)return;
   if(!Array.isArray(c.payments)) c.payments=[];
   c.payments.push({id:Date.now(),amount,date,fmt,note,recorded:new Date().toISOString()});
-  save(clientId);upsertClient(c);closeModal();render();
+  save(clientId);upsertClient(c);pushToSupabase();closeModal();render();
   showToast('Payment recorded');
 }
 
@@ -3813,52 +3828,12 @@ function saveEditPayment(clientId,payId){
   const p=c.payments.find(x=>x.id===payId);
   if(!p)return;
   p.amount=amount;p.date=date;p.fmt=fmt;p.note=note;
-  save();
+  save(clientId);upsertClient(c);pushToSupabase();
   showToast('Payment updated');
   openPaymentHistory(clientId);
 }
 
-function openEditPayment(clientId,payId){
-  const c=S.clients.find(x=>x.id===clientId);
-  const p=c&&(c.payments||[]).find(x=>x.id===payId);
-  if(!p)return;
-  showModal(`
-    <h3>Edit payment</h3>
-    <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
-      <div class="fgroup">
-        <div class="flabel">Amount ($)</div>
-        <input id="ep-amount" type="number" min="0" step="0.01" value="${p.amount}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;font-family:var(--font);width:100%;"/>
-      </div>
-      <div class="fgroup">
-        <div class="flabel">Payment date</div>
-        <input id="ep-date" type="date" value="${p.date}" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
-      </div>
-      <div class="fgroup">
-        <div class="flabel">Note (optional)</div>
-        <input id="ep-note" value="${esc(p.note||'')}" placeholder="e.g. Monthly retainer, Invoice #123" style="height:36px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:var(--font);width:100%;"/>
-      </div>
-    </div>
-    <div class="modal-actions" style="margin-top:16px;">
-      <button class="m-cancel" onclick="openPaymentHistory(${clientId})">← Back</button>
-      <button class="m-save" onclick="saveEditPayment(${clientId},${payId})">Save changes</button>
-    </div>`);
-  setTimeout(()=>{const el=document.getElementById('ep-amount');if(el){el.focus();el.select();}},50);
-}
 
-function saveEditPayment(clientId,payId){
-  const amount=parseFloat(document.getElementById('ep-amount').value)||0;
-  const date=document.getElementById('ep-date').value;
-  const note=document.getElementById('ep-note').value.trim();
-  if(!amount||amount<=0){alert('Please enter a valid amount.');return;}
-  if(!date){alert('Please select a date.');return;}
-  const fmt=new Date(date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const c=S.clients.find(x=>x.id===clientId);
-  const p=c&&(c.payments||[]).find(x=>x.id===payId);
-  if(!p)return;
-  p.amount=amount;p.date=date;p.fmt=fmt;p.note=note;
-  save();openPaymentHistory(clientId);
-  showToast('Payment updated');
-}
 
 function inlineDeletePayment(clientId,payId,btn){
   const row=document.getElementById('pay-row-'+payId);
@@ -3881,7 +3856,7 @@ function doDeletePayment(clientId,payId){
   const c=S.clients.find(x=>x.id===clientId);
   if(!c||!c.payments)return;
   c.payments=c.payments.filter(p=>p.id!==payId);
-  save(clientId);upsertClient(c);openPaymentHistory(clientId);
+  save(clientId);upsertClient(c);pushToSupabase();openPaymentHistory(clientId);
 }
 
 function openAccountingOverview(){
