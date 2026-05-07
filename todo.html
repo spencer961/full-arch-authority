@@ -117,9 +117,6 @@ select.finput{cursor:pointer;}
   <span class="hdr-title">Full-Arch Authority</span>
   <span class="hdr-sub">· Todo Lists</span>
   <div class="hdr-right">
-    <button class="hdr-btn active" id="view-status" onclick="setView('status')">By Status</button>
-    <button class="hdr-btn" id="view-priority" onclick="setView('priority')">By Priority</button>
-    <button class="hdr-btn" id="view-all" onclick="setView('all')">All Tasks</button>
   </div>
 </div>
 
@@ -135,6 +132,11 @@ select.finput{cursor:pointer;}
   <div class="main">
     <div class="main-head">
       <div class="main-title" id="main-title">Loading...</div>
+      <div class="seg">
+        <button class="seg-btn active" id="view-status" onclick="setView('status')">By Status</button>
+        <button class="seg-btn" id="view-priority" onclick="setView('priority')">By Priority</button>
+        <button class="seg-btn" id="view-all" onclick="setView('all')">All Tasks</button>
+      </div>
       <button class="add-task-btn" onclick="openTaskModal(null)">+ Add task</button>
     </div>
     <div class="board" id="board"></div>
