@@ -353,12 +353,15 @@ async function openTaskModal(taskId){
       </div>
       <div class="fgroup">
         <div class="flabel">Assignee</div>
-        <input class="finput" id="t-assignee" value="${t?esc(t.assignee||''):''}" placeholder="e.g. Spencer">
+        <div style="position:relative;">
+          <input class="finput" id="t-assignee" value="${t?esc(t.assignee||''):''}" placeholder="Type name or pick from staff..." autocomplete="off" oninput="filterAssigneeSuggestions(this.value)" onfocus="showAssigneeSuggestions()" style="width:100%;">
+          <div id="assignee-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:0.5px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:100;max-height:160px;overflow-y:auto;"></div>
+        </div>
       </div>
     </div>
     <div class="fgroup">
       <div class="flabel">Assign to client</div>
-      <select class="finput" id="t-client">${clientOptions}</select>
+      <select class="finput" id="t-client" onchange="updateAssigneeSuggestions()">${clientOptions}</select>
       <div style="font-size:10px;color:var(--text3);margin-top:4px;">Select a client or leave blank for personal tasks</div>
     </div>
     <div class="fgroup">
@@ -374,6 +377,64 @@ async function openTaskModal(taskId){
   overlay.onclick=()=>closeModal();
   document.body.appendChild(overlay);
   document.getElementById('t-title').focus();
+}
+
+// ── ASSIGNEE SUGGESTIONS ──────────────────────────────────────────────
+function getClientStaff(clientId){
+  if(!clientId) return [];
+  const c=clients.find(x=>x.id===parseInt(clientId));
+  if(!c||!c.info) return [];
+  // Staff stored as JSON string in info.staff
+  try{
+    const staff=typeof c.info.staff==='string'?JSON.parse(c.info.staff):c.info.staff;
+    if(Array.isArray(staff)) return staff.map(s=>s.name||s).filter(Boolean);
+  }catch(e){}
+  return [];
+}
+
+function updateAssigneeSuggestions(){
+  // Called when client dropdown changes — clear and refresh
+  const input=document.getElementById('t-assignee');
+  if(input) filterAssigneeSuggestions(input.value);
+}
+
+function showAssigneeSuggestions(){
+  const input=document.getElementById('t-assignee');
+  if(input) filterAssigneeSuggestions(input.value);
+}
+
+function filterAssigneeSuggestions(query){
+  const wrap=document.getElementById('assignee-suggestions');
+  if(!wrap) return;
+  const clientId=document.getElementById('t-client')?.value;
+  const staff=getClientStaff(clientId);
+  // Always include Spencer as an option
+  const allOptions=['Spencer',...staff.filter(s=>s!=='Spencer')];
+  const filtered=query
+    ?allOptions.filter(s=>s.toLowerCase().includes(query.toLowerCase()))
+    :allOptions;
+  if(!filtered.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  wrap.innerHTML=filtered.map(s=>`
+    <div onclick="selectAssignee('${esc(s)}')" style="padding:8px 10px;font-size:13px;cursor:pointer;color:var(--text);transition:background .1s;"
+      onmouseenter="this.style.background='rgba(11,29,94,0.06)'"
+      onmouseleave="this.style.background=''">${esc(s)}</div>`).join('');
+  // Close when clicking outside
+  setTimeout(()=>{
+    document.addEventListener('click', function handler(e){
+      if(!wrap.contains(e.target)&&e.target.id!=='t-assignee'){
+        wrap.style.display='none';
+        document.removeEventListener('click',handler);
+      }
+    });
+  },0);
+}
+
+function selectAssignee(name){
+  const input=document.getElementById('t-assignee');
+  if(input){input.value=name;}
+  const wrap=document.getElementById('assignee-suggestions');
+  if(wrap) wrap.style.display='none';
 }
 
 function closeModal(){
