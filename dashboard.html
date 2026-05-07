@@ -94,7 +94,7 @@
   .card:hover{border-color:var(--border-strong);box-shadow:0 2px 8px rgba(0,0,0,0.06);}
   .card-head{display:flex;align-items:center;gap:10px;}
   .avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0;}
-  .client-name{font-size:14px;font-weight:500;color:var(--text-primary);flex:1;}
+  .client-name{font-size:14px;font-weight:500;color:var(--text-primary);}
   .icon-btn{background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:3px 5px;border-radius:4px;font-size:14px;line-height:1;font-family:var(--font);}
   .icon-btn:hover{color:var(--text-secondary);background:var(--bg-secondary);}
 
@@ -176,6 +176,83 @@ const COLORS=[
   {bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},
   {bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'},{bg:'#0b1d5e',txt:'#ffffff',border:'#bc9762'}
 ];
+const CLIENT_ACCENTS=['#1a7fd4','#18a866','#D4944A','#f0359a','#9B7FE8','#4a9e12','#ff6b00','#d42020','#6b6966'];
+function getClientAccent(c){
+  if(c&&c.info&&c.info.accentColor) return c.info.accentColor;
+  return CLIENT_ACCENTS[c.ci%CLIENT_ACCENTS.length];
+}
+function setClientAccent(clientId, color){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c) return;
+  if(!c.info) c.info={};
+  c.info.accentColor=color;
+  save(clientId);upsertClient(c);pushToSupabase();
+  render();
+  closeClientAccentPicker();
+}
+function closeClientAccentPicker(){
+  const p=document.getElementById('client-accent-picker');
+  if(p) p.remove();
+}
+function openClientAccentPicker(clientId, anchorEl){
+  closeClientAccentPicker();
+  const c=S.clients.find(x=>x.id===clientId);
+  const currentColor=getClientAccent(c);
+  const rect=anchorEl.getBoundingClientRect();
+  const left=Math.min(rect.left, window.innerWidth-220);
+  const top=Math.min(rect.bottom+6, window.innerHeight-320);
+  const picker=document.createElement('div');
+  picker.id='client-accent-picker';
+  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
+  picker.innerHTML=`
+    <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Client color</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;" id="cap-swatches"></div>
+    <div style="border-top:0.5px solid var(--border-light);padding-top:10px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Custom</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div style="position:relative;width:36px;height:36px;flex-shrink:0;cursor:pointer;" onclick="this.querySelector('input').click()">
+          <input type="color" id="cap-wheel" value="${currentColor}" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0;">
+          <div id="cap-preview" style="width:36px;height:36px;border-radius:8px;background:${currentColor};border:0.5px solid var(--border-mid);pointer-events:none;"></div>
+        </div>
+        <input type="text" id="cap-hex" value="${currentColor}" maxlength="7" placeholder="#000000"
+          style="width:0;flex:1;min-width:0;height:36px;padding:0 8px;border:0.5px solid var(--border-mid);border-radius:8px;font-size:12px;font-family:monospace;color:var(--text-primary);background:var(--bg-secondary);">
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button onclick="closeClientAccentPicker()" style="flex:1;height:32px;border:0.5px solid var(--border-mid);border-radius:8px;background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);">✕ Cancel</button>
+      <button id="cap-save" style="flex:1;height:32px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);">✓ Save</button>
+    </div>`;
+  document.body.appendChild(picker);
+  // Render swatches
+  const grid=picker.querySelector('#cap-swatches');
+  CLIENT_ACCENTS.forEach((color,i)=>{
+    const isActive=currentColor===color;
+    const swatch=document.createElement('div');
+    swatch.style.cssText='display:flex;align-items:center;justify-content:center;cursor:pointer;';
+    swatch.innerHTML=`<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid ${isActive?'var(--text-primary)':'transparent'};box-shadow:0 1px 4px rgba(0,0,0,0.15);transition:transform .1s;" title="Color ${i+1}"></div>`;
+    swatch.onmouseenter=()=>swatch.querySelector('div').style.transform='scale(1.15)';
+    swatch.onmouseleave=()=>swatch.querySelector('div').style.transform='scale(1)';
+    swatch.onclick=(e)=>{e.stopPropagation();setClientAccent(clientId,color);};
+    grid.appendChild(swatch);
+  });
+  // Sync color inputs
+  const wheel=picker.querySelector('#cap-wheel');
+  const hex=picker.querySelector('#cap-hex');
+  const preview=picker.querySelector('#cap-preview');
+  let pending=currentColor;
+  wheel.oninput=()=>{pending=wheel.value;hex.value=pending;preview.style.background=pending;};
+  hex.oninput=()=>{const v=hex.value.trim();if(/^#[0-9A-Fa-f]{6}$/.test(v)){pending=v;wheel.value=v;preview.style.background=v;}};
+  picker.querySelector('#cap-save').onclick=(e)=>{
+    e.stopPropagation();
+    if(/^#[0-9A-Fa-f]{6}$/.test(pending)) setClientAccent(clientId,pending);
+  };
+  setTimeout(()=>document.addEventListener('click',e=>{
+    if(!picker.contains(e.target)) closeClientAccentPicker();
+  },{once:true}),0);
+}
+
+
+// ── CLIENT ACCENT COLORS (top border on cards) ───────────────────────
 
 const PRACTICE_PALETTE=[
   {bg:'#E6F1FB',txt:'#0C447C',border:'#1a7fd4',name:'Blue'},
@@ -801,7 +878,7 @@ let _syncTimer=null;
 let S=JSON.parse(localStorage.getItem('gmj_dashboard')||'null')||JSON.parse(JSON.stringify(DEFAULTS));
 migrateData();
 let _supabaseLoaded=false;
-let view='clients',filter='all',detailId=null,editMode=false,clientMode=false,clientModeId=null,accountingMode=false,reorderClientId=null;
+let view='clients',filter='all',detailId=null,editMode=false,editClients=false,clientMode=false,clientModeId=null,accountingMode=false,reorderClientId=null;
 const activePractice={};
 
 function save(clientId){
@@ -1245,7 +1322,7 @@ function openClientModeSelector(){
   const opts=S.clients.map(c=>{
     const col=COLORS[c.ci%COLORS.length];
     return`<button onclick="enterClientMode(${c.id})" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0.5px solid var(--border-light);border-radius:var(--radius-md);background:var(--bg-primary);color:var(--text-primary);font-size:13px;cursor:pointer;font-family:var(--font);margin-bottom:6px;text-align:left;">
-      <div style="width:30px;height:30px;border-radius:50%;background:${col.bg};color:${col.txt};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">${ini(c.name)}</div>
+      <div style="width:30px;height:30px;border-radius:50%;background:#0b1d5e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;">${ini(c.name)}</div>
       <span style="font-weight:500;">${esc(c.name)}</span>
     </button>`;
   }).join('');
@@ -1254,6 +1331,29 @@ function openClientModeSelector(){
     <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">Dashboard will show only that client's info.</p>
     <div>${opts}</div>
     <div class="modal-actions"><button class="m-cancel" onclick="closeModal()">Cancel</button></div>`);
+}
+
+function updateEditClientsBtn(){
+  const btn=document.getElementById('edit-clients-btn');
+  const dot=document.getElementById('edit-clients-dot');
+  const icon=document.getElementById('edit-clients-icon');
+  const label=document.getElementById('edit-clients-label');
+  if(!btn) return;
+  if(editClients){
+    btn.style.borderColor='#bc9762';
+    btn.style.color='#bc9762';
+    btn.style.borderWidth='1px';
+    dot.style.display='inline-block';
+    icon.style.display='none';
+    label.textContent='Clients on';
+  } else {
+    btn.style.borderColor='';
+    btn.style.color='';
+    btn.style.borderWidth='';
+    dot.style.display='none';
+    icon.style.display='inline-block';
+    label.textContent='Edit clients';
+  }
 }
 
 function render(){
@@ -1265,7 +1365,7 @@ function render(){
     const c=S.clients.find(x=>x.id===clientModeId);
     const col=c?COLORS[c.ci%COLORS.length]:{bg:'#eee',txt:'#333'};
     let html=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;">
-      ${c?`<div style="width:32px;height:32px;border-radius:50%;background:${col.bg};color:${col.txt};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">${ini(c.name)}</div>
+      ${c?`<div style="width:32px;height:32px;border-radius:50%;background:#0b1d5e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;">${ini(c.name)}</div>
       <span style="font-size:16px;font-weight:600;color:var(--text-primary);">${esc(c.name)}</span>`:''}
       <button class="btn-ghost" onclick="tryExitClientMode()" style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-tertiary);border-color:var(--border-light);">
         <span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;flex-shrink:0;"></span>
@@ -1286,7 +1386,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v57
+      v68
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1340,12 +1440,12 @@ function render(){
           <span class="hdr-drop-tag" style="background:#FAEEDA;color:#633806;">↗</span>
         </div>
         <div class="hdr-drop-head">Coming soon</div>
-        <div class="hdr-drop-row" style="opacity:0.45;cursor:default;">
-          <div class="hdr-drop-icon" style="background:#F1EFE8;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5F5E5A" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <div class="hdr-drop-row" onclick="closeAllPanels();window.open('todo.html','_blank')">
+          <div class="hdr-drop-icon" style="background:#EAF3DE;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#274F0A" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           </div>
-          <div style="flex:1;"><div class="hdr-drop-label">Todo Lists</div><div class="hdr-drop-sub">In development</div></div>
-          <span class="hdr-drop-tag" style="background:#F1EFE8;color:#888786;">Soon</span>
+          <div style="flex:1;"><div class="hdr-drop-label">Todo Lists</div><div class="hdr-drop-sub">Tasks per client</div></div>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-tertiary);flex-shrink:0;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </div>
       </div>
     </div>
@@ -1357,6 +1457,10 @@ function render(){
     <button class="btn-ghost" onclick="openLinkModal(null,null)">+ Add file</button>
     <button class="btn-ghost" style="${editMode?'border-color:#bc9762;color:#bc9762;border-width:1px;':''}" onclick="${editMode?'editMode=false;render()':'confirmEnableEditMode()'}">
       ${editMode?'<span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:5px;"></span>':'<span style="display:inline-block;transform:scaleX(-1);">✎</span>&nbsp;'}${editMode?'Editing on':'Edit files'}
+    </button>
+    <button id="edit-clients-btn" class="btn-ghost" onclick="editClients=!editClients;render();updateEditClientsBtn()">
+      <span id="edit-clients-dot" style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:none;margin-right:5px;"></span>
+      <span id="edit-clients-icon" style="display:inline-block;transform:scaleX(-1);">✎</span>&nbsp;<span id="edit-clients-label">Edit clients</span>
     </button>
     <button class="btn-ghost" onclick="openClientModeSelector()" style="margin-left:auto;">Client Mode</button>
     <div style="position:relative;display:inline-block;">
@@ -1406,6 +1510,7 @@ function render(){
   if(view==='clients') renderClients();
   else if(view==='category') renderCategory();
   else renderQueue();
+  updateEditClientsBtn();
 }
 
 function renderClients(){
@@ -1544,14 +1649,18 @@ function renderClients(){
           </div>
         </div>
       </div>`:'';
+    const accent=getClientAccent(c);
     html+=`<div class="card" onclick="openDetail(${c.id})" style="${hasMultiple?'grid-column:1/-1;':''}">
       <div class="card-head">
-        <div class="avatar" style="width:34px;height:34px;font-size:12px;background:${col.bg};color:${col.txt};">${ini(c.name)}</div>
+        <div class="avatar" style="width:34px;height:34px;font-size:12px;background:#0b1d5e;color:#ffffff;">${ini(c.name)}</div>
         <div style="flex:1;min-width:0;">
-          <div class="client-name">${esc(c.name)}</div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <span class="client-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 16px);">${esc(c.name)}</span>
+            <span style="width:7px;height:7px;border-radius:50%;background:${accent};flex-shrink:0;display:inline-block;"></span>
+          </div>
           ${metaLine}
         </div>
-        ${clientMode?'':` <button class="icon-btn" onclick="event.stopPropagation();openClientModal(${c.id})" title="Edit" style="transform:scaleX(-1);">✎</button>`}
+        ${clientMode||!editClients?'':` <button class="icon-btn" onclick="event.stopPropagation();openClientModal(${c.id})" title="Edit" style="transform:scaleX(-1);">✎</button>`}
         ${editMode&&!clientMode&&links.length>1?`<button class="icon-btn" onclick="event.stopPropagation();reorderClientId=${isReordering?'null':c.id};render()" title="Reorder files" style="${isReordering?'color:var(--accent);':''}" >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>`:''}
@@ -1642,9 +1751,9 @@ function renderCategory(){
       if(!client)return;
       const col=COLORS[client.ci%COLORS.length];
       rows+=`<div class="crow">
-        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${col.bg};color:${col.txt};">${ini(client.name)}</div>
+        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:#0b1d5e;color:#fff;">${ini(client.name)}</div>
         <span class="crow-name">${esc(client.name)}</span>
-        <span class="crow-url" title="${esc(l.url)}">${esc(l.url)}</span>
+        ${l.practice?`<span style="font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;background:${(client.practiceColors&&client.practiceColors[l.practice]||PRACTICE_PALETTE[0]).bg};color:${(client.practiceColors&&client.practiceColors[l.practice]||PRACTICE_PALETTE[0]).txt};white-space:nowrap;">${esc(l.practice)}</span>`:''}
         <button class="icon-btn" onclick="openLinkModal(${l.id},null)" title="Edit" style="transform:scaleX(-1);${clientMode?'display:none;':''}">✎</button>
         <button class="open-btn" onclick="window.open('${esc(l.url)}','_blank')">Open →</button>
       </div>`;
@@ -1680,8 +1789,8 @@ function renderQueue(){
       const isDone=!!S.queueDone[doneKey];
       catHtml+=`<div class="q-item" style="opacity:${isDone?0.45:1};transition:opacity .2s;">
         <div class="q-num" style="color:${isDone?'var(--text-tertiary)':'var(--text-tertiary)'};">${isDone?'✓':i+1}</div>
-        <div class="avatar" style="width:28px;height:28px;font-size:11px;background:${col.bg};color:${col.txt};">${ini(client.name)}</div>
-        <div class="q-info"><div class="q-client" style="${isDone?'text-decoration:line-through;color:var(--text-tertiary);':''}">${esc(client.name)}</div><div class="q-cat">${esc(cat)}</div></div>
+        <div class="avatar" style="width:28px;height:28px;font-size:11px;background:#0b1d5e;color:#fff;">${ini(client.name)}</div>
+        <div class="q-info"><div class="q-client" style="${isDone?'text-decoration:line-through;color:var(--text-tertiary);':''}">${esc(client.name)}</div><div class="q-cat">${esc(cat)}${l.practice?` · <span style="color:${(client.practiceColors&&client.practiceColors[l.practice]||PRACTICE_PALETTE[0]).txt}">${esc(l.practice)}</span>`:''}</div></div>
         <button onclick="toggleQueueDone('${doneKey}')" style="height:28px;padding:0 10px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:${isDone?'var(--bg-tertiary)':'transparent'};color:${isDone?'var(--text-tertiary)':'var(--text-secondary)'};font-size:11px;cursor:pointer;font-family:var(--font);">${isDone?'Undo':'Done'}</button>
         <button class="open-btn" onclick="window.open('${esc(l.url)}','_blank')">Open →</button>
       </div>`;
@@ -1713,6 +1822,7 @@ function renderDetail(app){
   const c=S.clients.find(x=>x.id===detailId);
   if(!c){detailId=null;render();return;}
   const col=COLORS[c.ci%COLORS.length];
+  const accent=getClientAccent(c.ci);
   const inf=c.info||{};
   const links=S.links.filter(l=>l.clientId===c.id);
   const practices=getPractices(c);
@@ -1826,7 +1936,7 @@ function renderDetail(app){
     app.innerHTML=`
       <button class="back-btn" onclick="detailId=null;render()">← Back</button>
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--border-light);">
-        <div class="avatar" style="width:56px;height:56px;font-size:20px;font-weight:600;background:${col.bg};color:${col.txt};flex-shrink:0;">${ini(c.name)}</div>
+        <div class="avatar" style="width:56px;height:56px;font-size:20px;font-weight:600;background:#0b1d5e;color:#fff;flex-shrink:0;">${ini(c.name)}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:22px;font-weight:600;color:var(--text-primary);line-height:1.2;">${esc(c.name)}</div>
           ${hasMultiplePractices?`<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">${practices.join(' · ')}</div>`:''}
@@ -1848,9 +1958,12 @@ function renderDetail(app){
   app.innerHTML=`
     <button class="back-btn" onclick="detailId=null;render()">← Back to all clients</button>
     <div class="detail-header">
-      <div class="avatar" style="width:52px;height:52px;font-size:18px;font-weight:600;background:${col.bg};color:${col.txt};">${ini(c.name)}</div>
-      <div style="flex:1;">
-        <div class="detail-name">${esc(c.name)}</div>
+      <div class="avatar" style="width:52px;height:52px;font-size:18px;font-weight:600;background:#0b1d5e;color:#fff;">${ini(c.name)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="detail-name">${esc(c.name)}</span>
+          <span onclick="openClientAccentPicker(${c.id},this)" style="width:10px;height:10px;border-radius:50%;background:${getClientAccent(c)};cursor:pointer;flex-shrink:0;border:1.5px solid rgba(0,0,0,0.1);" title="Change client color"></span>
+        </div>
         <div class="detail-sub">${subParts.join(' · ')||'No profile info yet'}</div>
       </div>
       ${clientMode?'':` <button class="btn-ghost" onclick="openClientModal(${c.id})">Edit profile</button>
@@ -2431,7 +2544,7 @@ function openClientModal(id){
   const billingContactsHtml=renderBillingContactsEditor(billingContacts);
 
   showModal(`
-    <h3>${id?'Edit client':'New client'}</h3>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"><h3 style="margin:0;">${id?'Edit client':'New client'}</h3>${id?`<span onclick="openClientAccentPicker(${id},this)" style="width:12px;height:12px;border-radius:50%;background:${getClientAccent(c)};cursor:pointer;flex-shrink:0;border:1.5px solid rgba(0,0,0,0.1);" title="Change client color"></span>`:''}</div>
     <div class="fgroup"><div class="flabel">Client name</div><input id="m-name" value="${esc(c?c.name:'')}" placeholder="Practice name"/></div>
     ${fieldRows}
     <div class="fgroup" style="margin-top:8px;">
@@ -3913,7 +4026,7 @@ function openAccountingOverview(){
     const clientRows=Object.entries(byClient).sort((a,b)=>b[1].total-a[1].total).map(([id,d])=>{
       const col=COLORS[d.ci%COLORS.length];
       return`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:0.5px solid var(--border-light);">
-        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:${col.bg};color:${col.txt};">${ini(d.name)}</div>
+        <div class="avatar" style="width:26px;height:26px;font-size:10px;background:#0b1d5e;color:#fff;">${ini(d.name)}</div>
         <span style="flex:1;font-size:13px;color:var(--text-primary);">${esc(d.name)}</span>
         <span style="font-size:11px;color:var(--text-tertiary);margin-right:8px;">${d.count} payment${d.count!==1?'s':''}</span>
         <span style="font-size:13px;font-weight:500;color:var(--text-primary);">$${d.total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>

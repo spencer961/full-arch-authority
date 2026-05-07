@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full-Arch Authority — Todo</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#0b1d5e;--gold:#bc9762;--bg:#f5f5f4;--bg2:#ffffff;--bg3:#efefed;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.13);
+  --text:#1a1a1a;--text2:#666462;--text3:#999896;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius:8px;--radius2:12px;
+  --high:#d42020;--med:#e07b0a;--low:#18a866;
+  --not-started:#888786;--in-progress:#1a7fd4;--waiting:#e07b0a;--done:#18a866;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* Header */
+.hdr{background:var(--navy);color:#fff;padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.hdr-title{font-size:15px;font-weight:600;color:var(--gold);}
+.hdr-sub{font-size:12px;color:rgba(255,255,255,0.5);margin-left:2px;}
+.hdr-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.hdr-btn{height:28px;padding:0 12px;border:0.5px solid rgba(255,255,255,0.2);border-radius:6px;background:transparent;color:rgba(255,255,255,0.7);font-size:11px;cursor:pointer;font-family:var(--font);transition:all .15s;}
+.hdr-btn:hover{background:rgba(255,255,255,0.1);color:#fff;}
+.hdr-btn.active{background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:600;}
+.back-link{color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;}
+.back-link:hover{color:#fff;}
+
+/* Layout */
+.layout{display:flex;flex:1;overflow:hidden;}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--bg2);border-right:0.5px solid var(--border2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.sidebar-head{padding:12px 14px 8px;border-bottom:0.5px solid var(--border);}
+.sidebar-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.client-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;transition:background .12s;border-radius:0;}
+.client-item:hover{background:rgba(11,29,94,0.04);}
+.client-item.active{background:rgba(11,29,94,0.07);}
+.client-item.active .ci-name{color:var(--navy);font-weight:500;}
+.ci-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.ci-name{font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ci-count{font-size:10px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:1px 6px;flex-shrink:0;}
+.ci-count.has-tasks{background:rgba(11,29,94,0.1);color:var(--navy);font-weight:600;}
+.sidebar-scroll{overflow-y:auto;flex:1;}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.main-head{padding:14px 20px 10px;border-bottom:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.main-title{font-size:15px;font-weight:600;color:var(--text);flex:1;}
+.seg{display:flex;background:var(--bg3);border-radius:7px;padding:2px;gap:1px;}
+.seg-btn{height:26px;padding:0 10px;border:none;border-radius:5px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:var(--font);transition:all .12s;}
+.seg-btn.active{background:#fff;color:var(--navy);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+.add-task-btn{height:30px;padding:0 12px;border:none;border-radius:var(--radius);background:var(--navy);color:var(--gold);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px;transition:opacity .15s;}
+.add-task-btn:hover{opacity:0.85;}
+
+/* Task board */
+.board{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+.status-section{}
+.status-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.status-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);}
+.status-count{font-size:11px;color:var(--text3);margin-left:2px;}
+.task-list{display:flex;flex-direction:column;gap:5px;}
+.task-card{background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:10px 12px;cursor:pointer;transition:transform .12s,box-shadow .12s,background .12s;position:relative;}
+.task-card:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.07);background:#fafaf9;}
+.task-card.done-card{opacity:0.55;}
+.task-row{display:flex;align-items:flex-start;gap:8px;}
+.task-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.task-check.checked{background:var(--done);border-color:var(--done);}
+.task-check.checked::after{content:"✓";color:#fff;font-size:9px;font-weight:700;}
+.task-title{font-size:13px;color:var(--text);flex:1;line-height:1.4;}
+.task-title.done-text{text-decoration:line-through;color:var(--text3);}
+.task-meta{display:flex;align-items:center;gap:6px;margin-top:5px;margin-left:24px;flex-wrap:wrap;}
+.priority-badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;}
+.p-high{background:#fdecea;color:var(--high);}
+.p-medium{background:#fef3e6;color:var(--med);}
+.p-low{background:#e1f5ee;color:var(--low);}
+.status-badge{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:500;}
+.s-not_started{background:#f1f0ef;color:var(--not-started);}
+.s-in_progress{background:#e6f1fb;color:var(--in-progress);}
+.s-waiting{background:#fef3e6;color:var(--waiting);}
+.s-done{background:#e1f5ee;color:var(--done);}
+.due-badge{font-size:10px;color:var(--text3);display:flex;align-items:center;gap:3px;}
+.due-badge.overdue{color:var(--high);font-weight:500;}
+.assignee-badge{font-size:10px;color:var(--text3);}
+.notes-preview{font-size:11px;color:var(--text3);margin-top:4px;margin-left:24px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px;font-style:italic;}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.modal{background:#fff;border-radius:14px;padding:24px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:16px;color:var(--navy);}
+.fgroup{margin-bottom:12px;}
+.flabel{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:5px;}
+.finput{width:100%;height:34px;padding:0 10px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:13px;font-family:var(--font);color:var(--text);background:var(--bg);}
+.finput:focus{outline:none;border-color:var(--navy);}
+textarea.finput{height:72px;padding:8px 10px;resize:vertical;}
+select.finput{cursor:pointer;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;border-top:0.5px solid var(--border);padding-top:14px;}
+.m-cancel{height:34px;padding:0 16px;border:0.5px solid var(--border2);border-radius:var(--radius);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font);}
+.m-save{height:34px;padding:0 18px;border:none;border-radius:var(--radius);background:var(--navy);color:var(--gold);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font);}
+.m-delete{height:34px;padding:0 14px;border:0.5px solid rgba(212,32,32,0.3);border-radius:var(--radius);background:transparent;color:var(--high);font-size:13px;cursor:pointer;font-family:var(--font);margin-right:auto;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;z-index:99999;opacity:0;transition:opacity .2s;pointer-events:none;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <a href="dashboard.html" class="back-link">← Dashboard</a>
+  <span class="hdr-title">Full-Arch Authority</span>
+  <span class="hdr-sub">· Todo Lists</span>
+  <div class="hdr-right">
+    <button class="hdr-btn active" id="view-status" onclick="setView('status')">By Status</button>
+    <button class="hdr-btn" id="view-priority" onclick="setView('priority')">By Priority</button>
+    <button class="hdr-btn" id="view-all" onclick="setView('all')">All Tasks</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div style="overflow-y:auto;flex:1;" id="sidebar-scroll">
+      <div style="padding:10px 14px 6px;">
+        <div class="sidebar-label">Clients</div>
+      </div>
+      <div id="client-list"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="main-head">
+      <div class="main-title" id="main-title">Loading...</div>
+      <button class="add-task-btn" onclick="openTaskModal(null)">+ Add task</button>
+    </div>
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+const SB={headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}};
+
+const CLIENT_ACCENTS=['#1a7fd4','#18a866','#D4944A','#f0359a','#9B7FE8','#4a9e12','#ff6b00','#d42020','#6b6966'];
+const STATUS_ORDER=['not_started','in_progress','waiting','done'];
+const STATUS_LABELS={'not_started':'Not Started','in_progress':'In Progress','waiting':'Waiting','done':'Done'};
+const STATUS_COLORS={'not_started':'var(--not-started)','in_progress':'var(--in-progress)','waiting':'var(--waiting)','done':'var(--done)'};
+const PRIORITY_ORDER=['high','medium','low'];
+const PRIORITY_LABELS={'high':'High','medium':'Medium','low':'Low'};
+
+let clients=[];
+let tasks=[];
+let selectedClientId='personal';
+let currentView='status';
+let editingTask=null;
+
+// ── INIT ──────────────────────────────────────────────────────────────
+async function init(){
+  document.getElementById('client-list').innerHTML=`<div style="padding:12px 14px;font-size:12px;color:var(--text3);font-style:italic;">Loading clients...</div>`;
+  await loadClients();
+  await loadTasks();
+  renderSidebar();
+  renderBoard();
+}
+
+async function loadClients(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/clients?select=id,name,info&order=id`,{headers:SB.headers});
+    if(!r.ok){
+      const err=await r.text();
+      console.error('loadClients HTTP error:', r.status, err);
+      return;
+    }
+    const rows=await r.json();
+    console.log('Loaded clients:', rows?.length, rows);
+    if(Array.isArray(rows)) clients=rows;
+  }catch(e){
+    console.error('loadClients failed:', e);
+  }
+}
+
+async function loadTasks(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/tasks?select=*&order=created_at.desc`,{headers:SB.headers});
+    const rows=await r.json();
+    if(Array.isArray(rows)) tasks=rows;
+  }catch(e){console.warn('loadTasks failed',e);}
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────
+function renderSidebar(){
+  const list=document.getElementById('client-list');
+  let html='';
+
+  // My Tasks
+  const myCount=tasks.filter(t=>!t.client_id&&t.status!=='done').length;
+  html+=`<div class="client-item${selectedClientId==='personal'?' active':''}" onclick="selectClient('personal')">
+    <span class="ci-dot" style="background:var(--gold);"></span>
+    <span class="ci-name" style="${selectedClientId==='personal'?'color:var(--navy);font-weight:500;':''}">My Tasks</span>
+    ${myCount?`<span class="ci-count has-tasks">${myCount}</span>`:''}
+  </div>`;
+
+  // Divider
+  html+=`<div style="padding:8px 14px 4px;"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Clients</div></div>`;
+
+  // Clients
+  clients.forEach((c,i)=>{
+    const accent=c.info?.accentColor||CLIENT_ACCENTS[i%CLIENT_ACCENTS.length];
+    const openCount=tasks.filter(t=>t.client_id===c.id&&t.status!=='done').length;
+    const isActive=selectedClientId===c.id;
+    html+=`<div class="client-item${isActive?' active':''}" onclick="selectClient(${c.id})">
+      <span class="ci-dot" style="background:${accent};"></span>
+      <span class="ci-name">${esc(c.name)}</span>
+      ${openCount?`<span class="ci-count has-tasks">${openCount}</span>`:''}
+    </div>`;
+  });
+
+  list.innerHTML=html;
+}
+
+function selectClient(id){
+  selectedClientId=id;
+  renderSidebar();
+  renderBoard();
+  const title=document.getElementById('main-title');
+  if(id==='personal') title.textContent='My Tasks';
+  else{const c=clients.find(x=>x.id===id);title.textContent=c?c.name:'Tasks';}
+}
+
+// ── BOARD ─────────────────────────────────────────────────────────────
+function renderBoard(){
+  const board=document.getElementById('board');
+  const filtered=tasks.filter(t=>{
+    if(selectedClientId==='personal') return !t.client_id;
+    return t.client_id===selectedClientId;
+  });
+
+  if(!filtered.length){
+    board.innerHTML=`<div class="empty-state">No tasks yet.<br><span style="font-size:12px;">Click "+ Add task" to get started.</span></div>`;
+    return;
+  }
+
+  if(currentView==='status'){
+    board.innerHTML=STATUS_ORDER.map(status=>{
+      const group=filtered.filter(t=>t.status===status);
+      return renderGroup(group, STATUS_LABELS[status], STATUS_COLORS[status], status, 'status');
+    }).filter(Boolean).join('');
+  } else if(currentView==='priority'){
+    board.innerHTML=PRIORITY_ORDER.map(p=>{
+      const group=filtered.filter(t=>t.priority===p);
+      const colors={'high':'var(--high)','medium':'var(--med)','low':'var(--low)'};
+      return renderGroup(group, PRIORITY_LABELS[p], colors[p], p, 'priority');
+    }).filter(Boolean).join('');
+  } else {
+    // All tasks sorted by priority then status
+    const sorted=[...filtered].sort((a,b)=>{
+      const po={'high':0,'medium':1,'low':2};
+      const so={'not_started':0,'in_progress':1,'waiting':2,'done':3};
+      return (po[a.priority]||1)-(po[b.priority]||1)||(so[a.status]||0)-(so[b.status]||0);
+    });
+    board.innerHTML=`<div class="task-list">${sorted.map(renderTask).join('')}</div>`;
+  }
+}
+
+function renderGroup(tasks, label, color, key, groupType){
+  if(!tasks.length) return '';
+  const openCount=tasks.filter(t=>t.status!=='done').length;
+  return`<div class="status-section">
+    <div class="status-head">
+      <span class="status-dot" style="background:${color};"></span>
+      <span class="status-label" style="color:${color};">${label}</span>
+      <span class="status-count">${tasks.length} task${tasks.length!==1?'s':''}</span>
+    </div>
+    <div class="task-list">${tasks.map(renderTask).join('')}</div>
+  </div>`;
+}
+
+function renderTask(t){
+  const isDone=t.status==='done';
+  const now=new Date(); now.setHours(0,0,0,0);
+  const due=t.due_date?new Date(t.due_date+'T00:00:00'):null;
+  const isOverdue=due&&due<now&&!isDone;
+  const dueStr=due?due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:due.getFullYear()!==now.getFullYear()?'numeric':undefined}):'';
+
+  return`<div class="task-card${isDone?' done-card':''}" onclick="openTaskModal(${t.id})">
+    <div class="task-row">
+      <div class="task-check${isDone?' checked':''}" onclick="event.stopPropagation();toggleDone(${t.id})"></div>
+      <span class="task-title${isDone?' done-text':''}">${esc(t.title)}</span>
+    </div>
+    <div class="task-meta">
+      <span class="priority-badge p-${t.priority||'medium'}">${PRIORITY_LABELS[t.priority||'medium']}</span>
+      <span class="status-badge s-${t.status||'not_started'}">${STATUS_LABELS[t.status||'not_started']}</span>
+      ${dueStr?`<span class="due-badge${isOverdue?' overdue':''}">📅 ${dueStr}${isOverdue?' · Overdue':''}</span>`:''}
+      ${t.assignee?`<span class="assignee-badge">👤 ${esc(t.assignee)}</span>`:''}
+    </div>
+    ${t.notes?`<div class="notes-preview">${esc(t.notes)}</div>`:''}
+  </div>`;
+}
+
+// ── TASK MODAL ────────────────────────────────────────────────────────
+async function openTaskModal(taskId){
+  // Reload clients if empty
+  if(!clients.length){
+    await loadClients();
+  }
+  const t=taskId?tasks.find(x=>x.id===taskId):null;
+  editingTask=t;
+
+  // Build client options with accent colors shown via optgroup label
+  const clientOptions=`<option value="">⬜ My Tasks (personal — no client)</option>`+
+    clients.map((c,i)=>{
+      const accent=c.info?.accentColor||CLIENT_ACCENTS[i%CLIENT_ACCENTS.length];
+      const selected=(t&&t.client_id===c.id)||(!t&&selectedClientId===c.id&&selectedClientId!=='personal');
+      return`<option value="${c.id}"${selected?' selected':''}>${esc(c.name)}</option>`;
+    }).join('');
+
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.id='task-overlay';
+  overlay.innerHTML=`<div class="modal" onclick="event.stopPropagation()">
+    <h3>${t?'Edit task':'New task'}</h3>
+    <div class="fgroup">
+      <div class="flabel">Task title *</div>
+      <input class="finput" id="t-title" value="${t?esc(t.title):''}" placeholder="What needs to be done?">
+    </div>
+    <div class="frow">
+      <div class="fgroup">
+        <div class="flabel">Status</div>
+        <select class="finput" id="t-status">
+          ${STATUS_ORDER.map(s=>`<option value="${s}"${(t?t.status:('not_started'))===s?' selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Priority</div>
+        <select class="finput" id="t-priority">
+          ${PRIORITY_ORDER.map(p=>`<option value="${p}"${(t?t.priority:('medium'))===p?' selected':''}>${PRIORITY_LABELS[p]}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fgroup">
+        <div class="flabel">Due date</div>
+        <input class="finput" type="date" id="t-due" value="${t&&t.due_date?t.due_date:''}">
+      </div>
+      <div class="fgroup">
+        <div class="flabel">Assignee</div>
+        <input class="finput" id="t-assignee" value="${t?esc(t.assignee||''):''}" placeholder="e.g. Spencer">
+      </div>
+    </div>
+    <div class="fgroup">
+      <div class="flabel">Assign to client</div>
+      <select class="finput" id="t-client">${clientOptions}</select>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;">Select a client or leave blank for personal tasks</div>
+    </div>
+    <div class="fgroup">
+      <div class="flabel">Notes</div>
+      <textarea class="finput" id="t-notes" placeholder="Additional context...">${t?esc(t.notes||''):''}</textarea>
+    </div>
+    <div class="modal-actions">
+      ${t?`<button class="m-delete" onclick="deleteTask(${t.id})">Delete</button>`:''}
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-save" onclick="saveTask()">Save task</button>
+    </div>
+  </div>`;
+  overlay.onclick=()=>closeModal();
+  document.body.appendChild(overlay);
+  document.getElementById('t-title').focus();
+}
+
+function closeModal(){
+  const o=document.getElementById('task-overlay');
+  if(o) o.remove();
+  editingTask=null;
+}
+
+async function saveTask(){
+  const title=document.getElementById('t-title').value.trim();
+  if(!title){alert('Please enter a task title.');return;}
+  const status=document.getElementById('t-status').value;
+  const priority=document.getElementById('t-priority').value;
+  const due=document.getElementById('t-due').value||null;
+  const assignee=document.getElementById('t-assignee').value.trim()||null;
+  const clientVal=document.getElementById('t-client').value;
+  const clientId=clientVal?parseInt(clientVal):null;
+  const notes=document.getElementById('t-notes').value.trim()||null;
+
+  const body={title,status,priority,due_date:due,assignee,client_id:clientId,notes,updated_at:new Date().toISOString()};
+
+  try{
+    if(editingTask){
+      await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${editingTask.id}`,{
+        method:'PATCH',headers:{...SB.headers,'Prefer':'return=minimal'},
+        body:JSON.stringify(body)
+      });
+      Object.assign(tasks.find(t=>t.id===editingTask.id),body);
+    } else {
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/tasks`,{
+        method:'POST',headers:{...SB.headers,'Prefer':'return=representation'},
+        body:JSON.stringify(body)
+      });
+      const rows=await r.json();
+      if(rows&&rows[0]) tasks.unshift(rows[0]);
+    }
+    closeModal();
+    renderSidebar();
+    renderBoard();
+    showToast(editingTask?'Task updated':'Task added ✓');
+  }catch(e){console.warn('saveTask failed',e);}
+}
+
+async function toggleDone(taskId){
+  const t=tasks.find(x=>x.id===taskId);
+  if(!t) return;
+  const newStatus=t.status==='done'?'not_started':'done';
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${taskId}`,{
+      method:'PATCH',headers:{...SB.headers,'Prefer':'return=minimal'},
+      body:JSON.stringify({status:newStatus,updated_at:new Date().toISOString()})
+    });
+    t.status=newStatus;
+    renderSidebar();
+    renderBoard();
+  }catch(e){console.warn('toggleDone failed',e);}
+}
+
+async function deleteTask(taskId){
+  if(!confirm('Delete this task?')) return;
+  try{
+    await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${taskId}`,{
+      method:'DELETE',headers:SB.headers
+    });
+    tasks=tasks.filter(t=>t.id!==taskId);
+    closeModal();
+    renderSidebar();
+    renderBoard();
+    showToast('Task deleted');
+  }catch(e){console.warn('deleteTask failed',e);}
+}
+
+// ── VIEW ──────────────────────────────────────────────────────────────
+function setView(v){
+  currentView=v;
+  ['status','priority','all'].forEach(x=>{
+    document.getElementById('view-'+x).classList.toggle('active',x===v);
+  });
+  renderBoard();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────
+function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────
+init().then(()=>{
+  if(selectedClientId==='personal') document.getElementById('main-title').textContent='My Tasks';
+});
+</script>
+</body>
+</html>
