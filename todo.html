@@ -181,7 +181,7 @@ async function loadClients(){
       return;
     }
     const rows=await r.json();
-    console.log('Loaded clients:', rows?.length, rows);
+    console.log('Loaded clients:', rows?.length, 'Sample info.staff:', rows?.[0]?.info?.staff);
     if(Array.isArray(rows)) clients=rows;
   }catch(e){
     console.error('loadClients failed:', e);
@@ -384,12 +384,17 @@ function getClientStaff(clientId){
   if(!clientId) return [];
   const c=clients.find(x=>x.id===parseInt(clientId));
   if(!c||!c.info) return [];
-  // Staff stored as JSON string in info.staff
   try{
-    const staff=typeof c.info.staff==='string'?JSON.parse(c.info.staff):c.info.staff;
-    if(Array.isArray(staff)) return staff.map(s=>s.name||s).filter(Boolean);
-  }catch(e){}
-  return [];
+    // Staff is stored as JSON string: '[{name:"...",title:"...",phone:"...",email:"..."}]'
+    let staff=c.info.staff;
+    if(!staff) return [];
+    if(typeof staff==='string') staff=JSON.parse(staff);
+    if(!Array.isArray(staff)) return [];
+    return staff.map(s=>s.name||'').filter(Boolean);
+  }catch(e){
+    console.warn('getClientStaff parse error:', e, c.info.staff);
+    return [];
+  }
 }
 
 function updateAssigneeSuggestions(){
@@ -400,6 +405,10 @@ function updateAssigneeSuggestions(){
 
 function showAssigneeSuggestions(){
   const input=document.getElementById('t-assignee');
+  const clientId=document.getElementById('t-client')?.value;
+  const c=clients.find(x=>x.id===parseInt(clientId));
+  console.log('Client info.staff raw:', c?.info?.staff);
+  console.log('Staff parsed:', getClientStaff(clientId));
   if(input) filterAssigneeSuggestions(input.value);
 }
 
