@@ -168,6 +168,17 @@ let editingTask=null;
 async function init(){
   document.getElementById('client-list').innerHTML=`<div style="padding:12px 14px;font-size:12px;color:var(--text3);font-style:italic;">Loading...</div>`;
   await Promise.all([loadClients(), loadAppState(), loadTasks()]);
+  // Merge staff from appState into clients (appState has the full info blob)
+  if(appState.clients){
+    appState.clients.forEach(ac=>{
+      const c=clients.find(x=>x.id===ac.id);
+      if(c&&ac.info?.staff){
+        if(!c.info) c.info={};
+        c.info.staff=ac.info.staff;
+      }
+    });
+  }
+  console.log('Staff check after merge — AOA:', clients.find(x=>x.name?.includes('Aesthetic'))?.info?.staff);
   renderSidebar();
   renderBoard();
 }
@@ -392,20 +403,14 @@ async function openTaskModal(taskId){
 // ── ASSIGNEE SUGGESTIONS ──────────────────────────────────────────────
 function getClientStaff(clientId){
   if(!clientId) return [];
-  const cid=parseInt(clientId);
-  // Staff lives in app_state.clients, not the clients table
-  const c=(appState.clients||[]).find(x=>x.id===cid);
-  if(!c||!c.info) return [];
+  const c=clients.find(x=>x.id===parseInt(clientId));
+  if(!c?.info?.staff) return [];
   try{
     let staff=c.info.staff;
-    if(!staff) return [];
     if(typeof staff==='string') staff=JSON.parse(staff);
     if(!Array.isArray(staff)) return [];
-    return staff.map(s=>s.name||'').filter(Boolean);
-  }catch(e){
-    console.warn('getClientStaff parse error:', e);
-    return [];
-  }
+    return staff.map(s=>typeof s==='object'?s.name:s).filter(Boolean);
+  }catch(e){return [];}
 }
 
 function updateAssigneeSuggestions(){
