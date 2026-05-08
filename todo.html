@@ -159,17 +159,27 @@ const PRIORITY_LABELS={'high':'High','medium':'Medium','low':'Low'};
 
 let clients=[];
 let tasks=[];
+let appState={}; // holds staff data from app_state
 let selectedClientId='personal';
 let currentView='status';
 let editingTask=null;
 
 // ── INIT ──────────────────────────────────────────────────────────────
 async function init(){
-  document.getElementById('client-list').innerHTML=`<div style="padding:12px 14px;font-size:12px;color:var(--text3);font-style:italic;">Loading clients...</div>`;
-  await loadClients();
-  await loadTasks();
+  document.getElementById('client-list').innerHTML=`<div style="padding:12px 14px;font-size:12px;color:var(--text3);font-style:italic;">Loading...</div>`;
+  await Promise.all([loadClients(), loadAppState(), loadTasks()]);
   renderSidebar();
   renderBoard();
+}
+
+async function loadAppState(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/app_state?id=eq.gmj_main&select=data`,{headers:SB.headers});
+    if(!r.ok) return;
+    const rows=await r.json();
+    if(rows&&rows[0]&&rows[0].data) appState=rows[0].data;
+    console.log('appState clients sample staff:', appState.clients?.[0]?.info?.staff);
+  }catch(e){console.warn('loadAppState failed',e);}
 }
 
 async function loadClients(){
@@ -382,17 +392,18 @@ async function openTaskModal(taskId){
 // ── ASSIGNEE SUGGESTIONS ──────────────────────────────────────────────
 function getClientStaff(clientId){
   if(!clientId) return [];
-  const c=clients.find(x=>x.id===parseInt(clientId));
+  const cid=parseInt(clientId);
+  // Staff lives in app_state.clients, not the clients table
+  const c=(appState.clients||[]).find(x=>x.id===cid);
   if(!c||!c.info) return [];
   try{
-    // Staff is stored as JSON string: '[{name:"...",title:"...",phone:"...",email:"..."}]'
     let staff=c.info.staff;
     if(!staff) return [];
     if(typeof staff==='string') staff=JSON.parse(staff);
     if(!Array.isArray(staff)) return [];
     return staff.map(s=>s.name||'').filter(Boolean);
   }catch(e){
-    console.warn('getClientStaff parse error:', e, c.info.staff);
+    console.warn('getClientStaff parse error:', e);
     return [];
   }
 }
@@ -406,8 +417,8 @@ function updateAssigneeSuggestions(){
 function showAssigneeSuggestions(){
   const input=document.getElementById('t-assignee');
   const clientId=document.getElementById('t-client')?.value;
-  const c=clients.find(x=>x.id===parseInt(clientId));
-  console.log('Client info.staff raw:', c?.info?.staff);
+  const c=(appState.clients||[]).find(x=>x.id===parseInt(clientId));
+  console.log('appState client info.staff:', c?.info?.staff);
   console.log('Staff parsed:', getClientStaff(clientId));
   if(input) filterAssigneeSuggestions(input.value);
 }
