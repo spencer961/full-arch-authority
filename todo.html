@@ -129,33 +129,24 @@ const PL={high:'High',medium:'Medium',low:'Low'};
 let clients=[],tasks=[],selId='personal',view='status',editTask=null;
 
 async function boot(){
-  // Load clients from Supabase
+  // Load clients from Supabase clients table (info column contains staff)
   try{
     const r=await fetch(`${SURL}/rest/v1/clients?select=id,name,info&order=id`,{headers:H});
-    clients=await r.json()||[];
+    const rows=await r.json();
+    if(Array.isArray(rows)) clients=rows;
+    console.log('Clients loaded:', clients.length);
+    // Log staff for debugging
+    clients.forEach(c=>{
+      if(c.info?.staff) console.log(`${c.name} staff:`, c.info.staff);
+    });
   }catch(e){console.warn('clients error:',e);}
-
-  // Merge staff from localStorage (dashboard saves full state here)
-  try{
-    const raw=localStorage.getItem('gmj_dashboard');
-    if(raw){
-      const ds=JSON.parse(raw);
-      (ds?.clients||[]).forEach(dc=>{
-        const c=clients.find(x=>x.id===dc.id);
-        if(!c) return;
-        if(!c.info) c.info={};
-        if(dc.info?.staff) c.info.staff=dc.info.staff;
-        if(dc.info?.accentColor) c.info.accentColor=dc.info.accentColor;
-      });
-      console.log('Staff merged from localStorage. Sample:',
-        clients.find(c=>c.name?.includes('Aesthetic'))?.info?.staff);
-    }
-  }catch(e){console.warn('localStorage error:',e);}
 
   // Load tasks
   try{
     const r=await fetch(`${SURL}/rest/v1/tasks?select=*&order=created_at.desc`,{headers:H});
-    tasks=await r.json()||[];
+    const rows=await r.json();
+    if(Array.isArray(rows)) tasks=rows;
+    console.log('Tasks loaded:', tasks.length);
   }catch(e){console.warn('tasks error:',e);}
 
   renderSidebar();
@@ -165,6 +156,15 @@ async function boot(){
 function getAccent(c,i){return c?.info?.accentColor||ACCENTS[i%ACCENTS.length];}
 
 function getStaff(clientId){
+  if(!clientId) return [];
+  const c=clients.find(x=>x.id===parseInt(clientId));
+  if(!c?.info?.staff) return [];
+  try{
+    let s=c.info.staff;
+    if(typeof s==='string') s=JSON.parse(s);
+    return Array.isArray(s)?s.map(x=>typeof x==='object'?x.name:x).filter(Boolean):[];
+  }catch(e){return [];}
+}(clientId){
   if(!clientId) return [];
   const c=clients.find(x=>x.id===parseInt(clientId));
   if(!c?.info?.staff) return [];
@@ -292,14 +292,14 @@ async function openModal(taskId){
       <input class="fi" id="t-assignee" value="${esc(t?.assignee||'')}"
         placeholder="Type or pick from staff…"
         autocomplete="off"
-        oninput="showDrop()"
-        onfocus="showDrop()">
+        oninput="showDrop(false)"
+        onfocus="showDrop(true)">
       <div class="cdrop" id="cdrop"></div>
     </div>
   </div>
 </div>
 <div class="fg"><div class="fl">Client</div>
-  <select class="fi" id="t-client" onchange="showDrop()">${clientOpts}</select>
+  <select class="fi" id="t-client" onchange="showDrop(true)">${clientOpts}</select>
   <div style="font-size:10px;color:var(--text3);margin-top:4px;">Leave blank for personal tasks</div>
 </div>
 <div class="fg"><div class="fl">Notes</div>
@@ -315,14 +315,15 @@ async function openModal(taskId){
   setTimeout(()=>document.getElementById('t-title')?.focus(),50);
 }
 
-function showDrop(){
+function showDrop(clearQuery){
   const drop=document.getElementById('cdrop');
   const inp=document.getElementById('t-assignee');
   const csel=document.getElementById('t-client');
   if(!drop||!inp) return;
   const cid=csel?.value?parseInt(csel.value):null;
   const staff=getStaff(cid);
-  const q=(inp.value||'').toLowerCase();
+  // On focus, show all; on input, filter by what's typed
+  const q=clearQuery?'':(inp.value||'').toLowerCase();
   const opts=['Spencer',...staff.filter(s=>s!=='Spencer')].filter(s=>!q||s.toLowerCase().includes(q));
   if(!opts.length){drop.style.display='none';return;}
   drop.innerHTML=opts.map(s=>`<div class="copt" onmousedown="event.preventDefault();pick('${s.replace(/'/g,"\\'")}')">
