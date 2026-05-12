@@ -1395,7 +1395,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v69
+      v70
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -2469,7 +2469,17 @@ function removeStaffMember(idx){
   const row=document.getElementById('sr-'+idx);
   if(!row)return;
   const nameEl=document.getElementById('sn-'+idx);
-  const name=nameEl&&nameEl.value.trim()?nameEl.value.trim():'this team member';
+  const titleEl=document.getElementById('st-'+idx);
+  const phoneEl=document.getElementById('sp-'+idx);
+  const emailEl=document.getElementById('se-'+idx);
+  const name=nameEl?.value.trim()||'this team member';
+  // Save current data on the row before replacing HTML
+  row._staffData={
+    name:nameEl?.value.trim()||'',
+    title:titleEl?.value.trim()||'',
+    phone:phoneEl?.value.trim()||'',
+    email:emailEl?.value.trim()||''
+  };
   const orig=row.innerHTML;
   const origStyle=row.style.cssText;
   row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:0.5px solid var(--border-light);background:var(--bg-secondary);';
@@ -2486,16 +2496,26 @@ function cancelRemoveStaff(idx){
 }
 
 function doRemoveStaffMember(idx){
-  const current=readStaffFromDOM();
-  // If called from inline (with idx), remove that index; otherwise fall back to pending
-  if(idx!==undefined){
-    current.splice(idx,1);
-  } else {
-    const{idx:pi}=window._pendingStaffRemove||{};
-    window._pendingStaffRemove=null;
-    if(pi===undefined)return;
-    current.splice(pi,1);
-  }
+  // Read staff from DOM but skip the row being removed (it has no inputs anymore)
+  // Instead, read all rows except the one being confirmed for removal
+  const rows=document.querySelectorAll('.staff-row');
+  const current=[];
+  rows.forEach((r,i)=>{
+    if(i===idx) return; // skip the row being removed
+    const n=(document.getElementById('sn-'+i)||{}).value||'';
+    const t=(document.getElementById('st-'+i)||{}).value||'';
+    const p=(document.getElementById('sp-'+i)||{}).value||'';
+    const e=(document.getElementById('se-'+i)||{}).value||'';
+    // Also check _origHtml if this row is in confirm state
+    if(!n&&!t&&!p&&!e){
+      // Row is in confirm state — read from _origHtml stored data
+      const stored=r._staffData;
+      if(stored) current.push(stored);
+    } else {
+      if(n.trim()||t.trim()||p.trim()||e.trim())
+        current.push({name:n.trim(),title:t.trim(),phone:p.trim(),email:e.trim()});
+    }
+  });
   document.getElementById('staff-editor').innerHTML=renderStaffEditor(current);
   rebindStaffIndices();
   initStaffDragSort();
