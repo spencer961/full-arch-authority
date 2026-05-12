@@ -129,17 +129,32 @@ const PL={high:'High',medium:'Medium',low:'Low'};
 let clients=[],tasks=[],selId='personal',view='status',editTask=null;
 
 async function boot(){
-  // Load clients from Supabase clients table (info column contains staff)
+  // Load clients from Supabase clients table
   try{
     const r=await fetch(`${SURL}/rest/v1/clients?select=id,name,info&order=id`,{headers:H});
     const rows=await r.json();
     if(Array.isArray(rows)) clients=rows;
     console.log('Clients loaded:', clients.length);
-    // Log staff for debugging
-    clients.forEach(c=>{
-      if(c.info?.staff) console.log(`${c.name} staff:`, c.info.staff);
-    });
   }catch(e){console.warn('clients error:',e);}
+
+  // Merge staff from localStorage (dashboard saves full state here including staff)
+  // This is same-origin so it works on GitHub Pages
+  try{
+    const raw=localStorage.getItem('gmj_dashboard');
+    if(raw){
+      const ds=JSON.parse(raw);
+      (ds?.clients||[]).forEach(dc=>{
+        const c=clients.find(x=>x.id===dc.id);
+        if(!c) return;
+        if(!c.info) c.info={};
+        // Only merge staff if clients table doesn't already have it
+        if(!c.info.staff && dc.info?.staff) c.info.staff=dc.info.staff;
+        if(!c.info.accentColor && dc.info?.accentColor) c.info.accentColor=dc.info.accentColor;
+      });
+      const staffed=clients.filter(c=>c.info?.staff).length;
+      console.log(`Staff merged: ${staffed} clients have staff`);
+    }
+  }catch(e){console.warn('localStorage merge error:',e);}
 
   // Load tasks
   try{
