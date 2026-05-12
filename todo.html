@@ -164,15 +164,6 @@ function getStaff(clientId){
     if(typeof s==='string') s=JSON.parse(s);
     return Array.isArray(s)?s.map(x=>typeof x==='object'?x.name:x).filter(Boolean):[];
   }catch(e){return [];}
-}(clientId){
-  if(!clientId) return [];
-  const c=clients.find(x=>x.id===parseInt(clientId));
-  if(!c?.info?.staff) return [];
-  try{
-    let s=c.info.staff;
-    if(typeof s==='string') s=JSON.parse(s);
-    return Array.isArray(s)?s.map(x=>typeof x==='object'?x.name:x).filter(Boolean):[];
-  }catch(e){return [];}
 }
 
 function renderSidebar(){
