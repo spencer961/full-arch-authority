@@ -601,7 +601,6 @@ function openClientPaymentDrilldown(clientId){
     </div>`);
 }
 
-async // Force-sync all clients to Supabase (fixes staff not in clients table)
 async function syncAllClientsToSupabase(){
   showToast('Syncing all clients to Supabase...');
   for(const c of S.clients){
