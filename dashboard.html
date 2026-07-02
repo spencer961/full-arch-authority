@@ -40,7 +40,9 @@
   }
   body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;}
   .app{max-width:1100px;margin:0 auto;padding:1.5rem 1rem;}
-  .page-title{font-size:18px;font-weight:700;color:#bc9762;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;letter-spacing:.01em;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;}
+  .sticky-top{position:sticky;top:52px;z-index:100;background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:0 1rem;padding-bottom:.75rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+  .pill-bar{position:sticky;z-index:99;background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:8px 1rem 8px;border-top:0.5px solid var(--border-light);display:flex;flex-wrap:wrap;gap:6px;}
+  .page-title{font-size:18px;font-weight:700;color:#bc9762;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;letter-spacing:.01em;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;position:sticky;top:0;z-index:101;}
   .page-title span{font-size:12px;font-weight:400;color:rgba(255,255,255,0.45);}
   .page-title .title-left{display:flex;flex-direction:column;gap:2px;flex:1;}
   .page-title .title-left .title-main{font-size:17px;font-weight:700;color:#bc9762;line-height:1.2;}
@@ -1395,7 +1397,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v70
+      v75
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1460,7 +1462,8 @@ function render(){
     </div>
   </div>
 </div>
-  <div class="top-bar">
+  <div class="sticky-top">
+  <div class="top-bar" style="margin-bottom:.75rem;">
     <input id="nc-inp" placeholder="New client name" onkeydown="if(event.key==='Enter')addClient()"/>
     <button class="btn-primary" onclick="addClient()">Add client</button>
     <button class="btn-ghost" onclick="openLinkModal(null,null)">+ Add file</button>
@@ -1490,7 +1493,7 @@ function render(){
     </div>
     <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackup(this)"/>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;padding:8px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border-light);">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem;padding:8px 12px;background:var(--bg-secondary);border-radius:var(--radius-md);border:0.5px solid var(--border-light);">
     <span style="font-size:11px;font-weight:500;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-right:4px;">Accounting</span>
     ${accountingMode?`<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);"><span style="width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;display:inline-block;"></span>Active</span><button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;" onclick="accountingMode=false;render()">Exit</button><button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;margin-left:auto;" onclick="openAccountingOverview()">Overview</button>`:`<button class="btn-ghost" style="height:30px;font-size:12px;padding:0 12px;" onclick="confirmEnableAccounting()">Enable</button><span style="font-size:12px;color:var(--text-tertiary);">Enable to view and record client payments</span>`}
   </div>
@@ -1498,6 +1501,7 @@ function render(){
     <button class="vtab${view==='clients'?' active':''}" onclick="switchView('clients')">By client</button>
     <button class="vtab${view==='category'?' active':''}" onclick="switchView('category')">By category</button>
     <button class="vtab${view==='queue'?' active':''}" onclick="switchView('queue')">Work queue</button>
+  </div>
   </div>`;
 
   if(view!=='queue'){
@@ -1520,6 +1524,19 @@ function render(){
   else if(view==='category') renderCategory();
   else renderQueue();
   updateEditClientsBtn();
+  // Set pill-bar top to match sticky-top height
+  requestAnimationFrame(()=>{
+    const headerEl=document.querySelector('.page-title');
+    const stickyEl=document.querySelector('.sticky-top');
+    const pillEl=document.querySelector('.pill-bar');
+    const mainEl=document.getElementById('main');
+    const headerH=headerEl?headerEl.offsetHeight:52;
+    const stickyH=stickyEl?stickyEl.offsetHeight:0;
+    const pillH=pillEl?pillEl.offsetHeight:0;
+    if(pillEl) pillEl.style.top=(headerH+stickyH)+'px';
+    // Add padding so cards don't hide behind sticky bars on scroll
+    if(mainEl) mainEl.style.paddingTop=(pillH+8)+'px';
+  });
 }
 
 function renderClients(){
