@@ -73,6 +73,15 @@ a.back:hover{color:#fff;}
 .empty{text-align:center;padding:40px;color:var(--text3);font-size:13px;font-style:italic;}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;}
 .modal{background:#fff;border-radius:14px;padding:24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.health-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--border);}
+.health-row:last-child{border-bottom:none;}
+.health-label{font-size:13px;flex:1;color:var(--text);}
+.health-val{font-size:12px;color:var(--text2);}
+.health-ok{color:#18a866;font-weight:600;}
+.health-err{color:#d42020;font-weight:600;}
+.health-dot-ok{width:8px;height:8px;border-radius:50%;background:#18a866;flex-shrink:0;}
+.health-dot-err{width:8px;height:8px;border-radius:50%;background:#d42020;flex-shrink:0;}
+.health-dot-warn{width:8px;height:8px;border-radius:50%;background:#e07b0a;flex-shrink:0;}
 .modal h3{font-size:15px;font-weight:600;margin-bottom:16px;color:var(--navy);}
 .fg{margin-bottom:12px;}
 .fl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:5px;}
@@ -99,6 +108,12 @@ select.fi{cursor:pointer;}
   <a href="dashboard.html" class="back">← Dashboard</a>
   <span class="hdr-title">Full-Arch Authority</span>
   <span class="hdr-sub">· Todo Lists</span>
+  <div style="margin-left:auto;">
+    <button onclick="openHealthCheck()" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
+      <span id="health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;"></span>
+      DB Health
+    </button>
+  </div>
 </div>
 <div class="layout">
   <div class="sidebar" id="sidebar">
@@ -405,6 +420,118 @@ function setView(v){
   view=v;
   ['status','priority','all'].forEach(x=>document.getElementById('v-'+x).classList.toggle('active',x===v));
   renderBoard();
+}
+
+async function openHealthCheck(){
+  // Show loading modal
+  const ov=document.createElement('div');
+  ov.className='overlay';ov.id='health-ov';ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  ov.innerHTML=`<div class="modal">
+    <h3 style="font-size:15px;font-weight:600;color:var(--navy);margin-bottom:16px;">🔍 Database Health Check</h3>
+    <div id="health-body" style="color:var(--text2);font-size:13px;padding:20px 0;text-align:center;">Checking connection...</div>
+    <div style="margin-top:16px;border-top:0.5px solid var(--border);padding-top:14px;display:flex;justify-content:flex-end;">
+      <button onclick="document.getElementById('health-ov').remove()" style="height:34px;padding:0 16px;border:0.5px solid var(--border2);border-radius:8px;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font);">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+
+  const results=[];
+  let allOk=true;
+
+  // 1. Check tasks table
+  try{
+    const r=await fetch(`${SURL}/rest/v1/tasks?select=id,title,status,priority,assignee,client_id,updated_at&order=updated_at.desc&limit=5`,{headers:H});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows=await r.json();
+    // Check for tasks with no title
+    const noTitle=rows.filter(t=>!t.title).length;
+    // Check for tasks with assignees
+    const withAssignee=tasks.filter(t=>t.assignee).length;
+    const totalTasks=tasks.length;
+    const doneTasks=tasks.filter(t=>t.status==='done').length;
+    results.push({ok:true,label:'tasks table',detail:`${totalTasks} tasks total · ${doneTasks} done · ${withAssignee} assigned`,
+      extra:noTitle?`⚠ ${noTitle} task(s) missing title`:null});
+  }catch(e){
+    allOk=false;
+    results.push({ok:false,label:'tasks table',detail:e.message});
+  }
+
+  // 2. Check clients readable
+  try{
+    const r=await fetch(`${SURL}/rest/v1/clients?select=id,name,info&order=id`,{headers:H});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows=await r.json();
+    const withStaff=rows.filter(c=>c.info?.staff).length;
+    results.push({ok:true,label:'clients table',detail:`${rows.length} clients · ${withStaff} with staff data`});
+  }catch(e){
+    allOk=false;
+    results.push({ok:false,label:'clients table',detail:e.message});
+  }
+
+  // 3. Check staff data in clients
+  const staffed=clients.filter(c=>c.info?.staff).length;
+  const noStaff=clients.length-staffed;
+  results.push({
+    ok:staffed>0,
+    label:'staff data (loaded)',
+    detail:`${staffed}/${clients.length} clients have staff · ${noStaff} empty`,
+    extra:noStaff>0?`⚠ Run "Sync all clients to DB" from dashboard to fix`:null
+  });
+
+  // 4. Check most recent task write (write test)
+  try{
+    const testTitle=`__health_check_${Date.now()}`;
+    const r=await fetch(`${SURL}/rest/v1/tasks`,{
+      method:'POST',
+      headers:{...H,'Prefer':'return=representation'},
+      body:JSON.stringify({title:testTitle,status:'not_started',priority:'low'})
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows=await r.json();
+    const newId=rows?.[0]?.id;
+    if(!newId) throw new Error('No ID returned');
+    // Delete test row immediately
+    await fetch(`${SURL}/rest/v1/tasks?id=eq.${newId}`,{method:'DELETE',headers:H});
+    results.push({ok:true,label:'write & delete test',detail:'Successfully wrote and deleted a test task'});
+  }catch(e){
+    allOk=false;
+    results.push({ok:false,label:'write & delete test',detail:e.message});
+  }
+
+  // 5. Check assignees are persisted
+  const tasksWithAssignee=tasks.filter(t=>t.assignee);
+  const assigneeCheck=tasksWithAssignee.length>0;
+  results.push({
+    ok:true,
+    label:'assignee persistence',
+    detail:assigneeCheck
+      ?`${tasksWithAssignee.length} task(s) have assignees saved`
+      :'No tasks with assignees yet (add one to test)',
+  });
+
+  // 6. Check client-task links
+  const clientTasks=tasks.filter(t=>t.client_id);
+  const personalTasks=tasks.filter(t=>!t.client_id);
+  results.push({ok:true,label:'client/personal split',detail:`${clientTasks.length} client tasks · ${personalTasks.length} personal tasks`});
+
+  // Update dot
+  document.getElementById('health-dot').style.background=allOk?'#18a866':'#d42020';
+
+  // Render results
+  document.getElementById('health-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:${allOk?'#EAF3DE':'#FCEBEB'};margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:500;color:${allOk?'#274F0A':'#791F1F'};">${allOk?'✓ All checks passed':'✗ Some issues found'}</span>
+      <span style="font-size:11px;color:${allOk?'#274F0A':'#791F1F'};margin-left:auto;">Checked ${new Date().toLocaleTimeString()}</span>
+    </div>
+    ${results.map(r=>`
+      <div class="health-row">
+        <div class="${r.ok?'health-dot-ok':'health-dot-err'}"></div>
+        <div class="health-label">
+          <div>${r.label}</div>
+          ${r.extra?`<div style="font-size:11px;color:#e07b0a;margin-top:2px;">${r.extra}</div>`:''}
+        </div>
+        <div class="health-val ${r.ok?'health-ok':'health-err'}">${r.detail}</div>
+      </div>`).join('')}`;
 }
 
 function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''}
