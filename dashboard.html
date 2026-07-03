@@ -22,6 +22,19 @@
     --radius-md:8px;
     --radius-lg:12px;
     --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    /* z-index scale — named so the stacking order is documented, not guessed.
+       Keep these three sticky layers in this exact relative order: header must
+       sit above toolbar, toolbar above pills, or the sticky-offset math in
+       render() (search "Set pill-bar top") breaks again. */
+    --z-sticky-pills:10;
+    --z-sticky-toolbar:11;
+    --z-sticky-header:12;
+    --z-dropdown:30;
+    --z-modal:50;
+    --z-picker:60;
+    --z-toast:70;
+    --z-tooltip:71;
+    --z-gate:100;
   }
   @media(prefers-color-scheme:dark){
     :root{
@@ -40,18 +53,17 @@
   }
   body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;}
   .app{max-width:1100px;margin:0 auto;padding:1.5rem 1rem;}
-  .sticky-top{position:sticky;top:52px;z-index:100;background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:0 1rem;padding-bottom:.75rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
-  .pill-bar{position:sticky;z-index:99;background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:8px 1rem 8px;border-top:0.5px solid var(--border-light);display:flex;flex-wrap:wrap;gap:6px;}
-  .page-title{font-size:18px;font-weight:700;color:#bc9762;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;letter-spacing:.01em;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;position:sticky;top:0;z-index:101;}
+  .sticky-top{position:sticky;top:52px;z-index:var(--z-sticky-toolbar);background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:0 1rem;padding-bottom:.75rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+  .page-title{display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;position:sticky;top:0;z-index:var(--z-sticky-header);}
   .page-title span{font-size:12px;font-weight:400;color:rgba(255,255,255,0.45);}
   .page-title .title-left{display:flex;flex-direction:column;gap:2px;flex:1;}
-  .page-title .title-left .title-main{font-size:17px;font-weight:700;color:#bc9762;line-height:1.2;}
+  .page-title .title-left .title-main{font-size:17px;font-weight:700;color:var(--accent2);line-height:1.2;}
   .page-title .title-left .title-sub{font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);}
   .hdr-right{display:flex;align-items:center;gap:6px;}
   .hdr-icon-btn{width:32px;height:32px;border-radius:7px;border:0.5px solid rgba(255,255,255,0.18);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;color:rgba(255,255,255,0.65);flex-shrink:0;}
   .hdr-icon-btn:hover{background:rgba(255,255,255,0.08);}
   .hdr-icon-btn .notif-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:#bc9762;color:#0b1d5e;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #0b1d5e;padding:0 3px;}
-  .hdr-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:10px;border:0.5px solid rgba(0,0,0,0.1);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:500;min-width:240px;overflow:hidden;display:none;}
+  .hdr-dropdown{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:10px;border:0.5px solid rgba(0,0,0,0.1);box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:var(--z-dropdown);min-width:240px;overflow:hidden;display:none;}
   .hdr-dropdown.open{display:block;}
   .hdr-drop-head{padding:7px 12px;font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;background:var(--bg-secondary);border-bottom:0.5px solid var(--border-light);}
   .hdr-drop-row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:0.5px solid var(--border-light);}
@@ -75,7 +87,6 @@
   .btn-primary:hover{opacity:.82;}
   .btn-ghost{height:36px;padding:0 14px;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;font-family:var(--font);transition:background .15s ease,color .15s ease,border-color .15s ease;}
   .btn-ghost:hover,.btn-ghost:focus{background:rgba(11,29,94,0.06) !important;color:var(--text-primary) !important;border-color:rgba(11,29,94,0.3) !important;}
-  .btn-ghost:hover{background:var(--bg-secondary);}
 
   /* tabs */
   .view-tabs{display:flex;border:0.5px solid var(--border-mid);border-radius:var(--radius-md);overflow:hidden;width:fit-content;margin-bottom:1.25rem;}
@@ -84,8 +95,9 @@
   .vtab:not(.active):hover{background:rgba(11,29,94,0.06);color:var(--text-primary);}
   .vtab.active{background:var(--accent);color:#fff;border-bottom:2px solid var(--accent2);}
 
-  /* pills */
-  .pill-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem;}
+  /* pills — consolidated: this used to be defined twice (once up near .sticky-top,
+     once here) with layout properties split across both. One rule, one source of truth. */
+  .pill-bar{position:sticky;z-index:var(--z-sticky-pills);background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:8px 1rem 8px;border-top:0.5px solid var(--border-light);display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem;}
   .pill{padding:5px 14px;border:0.5px solid var(--border-mid);border-radius:999px;background:var(--bg-primary);color:var(--text-secondary);font-size:12px;cursor:pointer;font-family:var(--font);}
   .pill:hover{background:var(--bg-secondary);}
   .pill.active{background:var(--accent);color:#fff;border-color:var(--accent2);}
@@ -150,7 +162,7 @@
   .lt-url{font-size:11px;color:var(--text-tertiary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
   /* modal */
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:var(--z-modal);padding:1rem;}
   .modal{background:var(--bg-primary);border-radius:var(--radius-lg);border:0.5px solid var(--border-mid);padding:1.5rem;width:100%;max-width:780px;display:flex;flex-direction:column;gap:13px;max-height:90vh;overflow-y:auto;}
   .modal h3{font-size:16px;font-weight:600;color:var(--text-primary);}
   .fgroup{display:flex;flex-direction:column;gap:5px;}
@@ -163,13 +175,13 @@
   .m-save{height:34px;padding:0 16px;border:none;border-radius:var(--radius-md);background:var(--accent);color:#fff;font-size:13px;cursor:pointer;font-family:var(--font);font-weight:500;}
   .m-danger{height:34px;padding:0 14px;border:0.5px solid rgba(163,45,45,0.3);border-radius:var(--radius-md);background:transparent;color:#A32D2D;font-size:13px;cursor:pointer;margin-right:auto;font-family:var(--font);}
   .hidden-icon-wrap{flex-shrink:0;cursor:default;display:inline-flex;align-items:center;}
-  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:13px;padding:10px 18px;border-radius:var(--radius-md);z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
-  #hidden-tooltip-global{position:fixed;background:#E6F1FB;color:#0C447C;font-size:11px;white-space:nowrap;padding:4px 8px;border-radius:4px;pointer-events:none;z-index:9999;display:none;border:0.5px solid #B5D4F4;}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:13px;padding:10px 18px;border-radius:var(--radius-md);z-index:var(--z-toast);opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;}
+  #hidden-tooltip-global{position:fixed;background:#E6F1FB;color:#0C447C;font-size:11px;white-space:nowrap;padding:4px 8px;border-radius:4px;pointer-events:none;z-index:var(--z-tooltip);display:none;border:0.5px solid #B5D4F4;}
   .muted{color:var(--text-tertiary);font-style:italic;}
 </style>
 </head>
 <body>
-<div id="admin-gate" style="position:fixed;inset:0;background:#f5f5f4;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+<div id="admin-gate" style="position:fixed;inset:0;background:#f5f5f4;z-index:var(--z-gate);display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:40px;max-width:400px;width:90%;text-align:center;">
     <div style="width:56px;height:56px;border-radius:12px;background:#0b1d5e;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:20px;font-weight:700;color:#bc9762;">FA</div>
     <h1 style="font-size:20px;font-weight:600;margin-bottom:8px;color:#1a1a1a;">Admin Login</h1>
@@ -215,7 +227,7 @@ function openClientAccentPicker(clientId, anchorEl){
   const top=Math.min(rect.bottom+6, window.innerHeight-320);
   const picker=document.createElement('div');
   picker.id='client-accent-picker';
-  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
+  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:var(--z-picker);box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
   picker.innerHTML=`
     <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Client color</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;" id="cap-swatches"></div>
@@ -1200,7 +1212,7 @@ function showCatColorConflictPrompt(cat,paletteIdxOrObj,conflicts){
 
   const overlay=document.createElement('div');
   overlay.id='cat-conflict-prompt';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:var(--z-modal);display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML=`
     <div style="background:var(--bg-primary);border-radius:12px;padding:24px 28px;max-width:380px;width:90%;border:0.5px solid var(--border-mid);">
       <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Duplicate color</div>
@@ -1256,7 +1268,7 @@ function openColorPicker(cat,anchorEl){
   picker.id='cat-color-picker';
   const left=Math.min(rect.left, window.innerWidth-220);
   const top=Math.min(rect.bottom+6, window.innerHeight-320);
-  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
+  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:var(--z-picker);box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
 
   picker.innerHTML=`
     <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Category color</div>
@@ -1427,7 +1439,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v78
+      v80
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1507,7 +1519,7 @@ function render(){
     <button class="btn-ghost" onclick="openClientModeSelector()" style="margin-left:auto;">Client Mode</button>
     <div style="position:relative;display:inline-block;">
       <button class="btn-ghost" onclick="toggleSettingsMenu()" id="settings-btn">⚙ Settings</button>
-      <div id="settings-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:var(--radius-lg);min-width:180px;z-index:100;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+      <div id="settings-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:var(--radius-lg);min-width:180px;z-index:var(--z-dropdown);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.12);">
         <button onclick="exportBackup();closeSettingsMenu();" style="display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border:none;background:transparent;color:var(--text-primary);font-size:13px;cursor:pointer;font-family:var(--font);text-align:left;">
           <span style="font-size:14px;">⬆</span> Export backup
         </button>
@@ -2817,7 +2829,7 @@ function openPracticeColorPicker(rowIdx, anchorEl, palette){
 
   const picker=document.createElement('div');
   picker.id='prac-color-picker';
-  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:10000;box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
+  picker.style.cssText=`position:fixed;top:${top}px;left:${left}px;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:12px;padding:14px;z-index:var(--z-picker);box-shadow:0 8px 32px rgba(0,0,0,0.18);width:210px;`;
 
   picker.innerHTML=`
     <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Practice color</div>
