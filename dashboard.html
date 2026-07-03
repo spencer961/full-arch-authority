@@ -54,7 +54,7 @@
   body{font-family:var(--font);background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;}
   .app{max-width:1100px;margin:0 auto;padding:1.5rem 1rem;}
   .sticky-top{position:sticky;top:52px;z-index:var(--z-sticky-toolbar);background:var(--bg-secondary);margin-left:-1rem;margin-right:-1rem;padding:0 1rem;padding-bottom:.75rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
-  .page-title{display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;position:sticky;top:0;z-index:var(--z-sticky-header);}
+  .page-title{display:flex;align-items:center;gap:10px;background:#0b1d5e;padding:13px 1rem;margin-left:-1rem;margin-right:-1rem;margin-top:-1.5rem;margin-bottom:1.5rem;position:sticky;top:0;z-index:var(--z-sticky-header);}
   .page-title span{font-size:12px;font-weight:400;color:rgba(255,255,255,0.45);}
   .page-title .title-left{display:flex;flex-direction:column;gap:2px;flex:1;}
   .page-title .title-left .title-main{font-size:17px;font-weight:700;color:var(--accent2);line-height:1.2;}
@@ -1439,7 +1439,7 @@ function render(){
   <div class="hdr-right">
     <button onclick="openDBHealthModal()" title="DB Health Check" style="height:28px;padding:0 10px;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;background:transparent;color:rgba(255,255,255,0.55);font-size:10px;font-weight:600;cursor:pointer;letter-spacing:.03em;display:flex;align-items:center;gap:5px;">
       <span id="db-health-dot" style="width:6px;height:6px;border-radius:50%;background:#888786;flex-shrink:0;transition:background .3s;"></span>
-      v80
+      v81
     </button>
     <div style="position:relative;">
       <button class="hdr-icon-btn" onclick="toggleNotifPanel(event)" id="notif-btn" title="Notifications">
@@ -1579,10 +1579,13 @@ function render(){
     // including pill-bar's position (visible as a large gap + hidden card headers on scroll).
     if(stickyEl) stickyEl.style.top=headerH+'px';
     const stickyH=stickyEl?stickyEl.offsetHeight:0;
-    const pillH=pillEl?pillEl.offsetHeight:0;
     if(pillEl) pillEl.style.top=(headerH+stickyH)+'px';
-    // Add padding so cards don't hide behind sticky bars on scroll
-    if(mainEl) mainEl.style.paddingTop=(pillH+8)+'px';
+    // NOTE: previously also set mainEl.style.paddingTop=(pillH+8)+'px' here as a manual
+    // spacing compensation. Removed — position:sticky elements already reserve their own
+    // space in normal document flow; they don't need padding added after them the way
+    // position:fixed would. That line was pre-existing duct tape from before sticky-top's
+    // own offset was fixed (see v78), and left unconditionally applied it just produced a
+    // permanent gap above the cards even at scroll position zero.
   });
 }
 
