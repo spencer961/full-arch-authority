@@ -169,6 +169,16 @@
 </style>
 </head>
 <body>
+<div id="admin-gate" style="position:fixed;inset:0;background:#f5f5f4;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:12px;padding:40px;max-width:400px;width:90%;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:12px;background:#0b1d5e;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:20px;font-weight:700;color:#bc9762;">FA</div>
+    <h1 style="font-size:20px;font-weight:600;margin-bottom:8px;color:#1a1a1a;">Admin Login</h1>
+    <p style="font-size:13px;color:#888786;line-height:1.6;margin-bottom:20px;">This is the internal dashboard. Enter your admin email — we'll send a one-time sign-in link.</p>
+    <input type="email" id="admin-gate-email" placeholder="you@fullarcharchitecture.com" autocomplete="email" style="width:100%;padding:11px 14px;border-radius:8px;border:0.5px solid rgba(0,0,0,0.15);background:#f9f9f8;font-size:14px;margin-bottom:12px;outline:none;box-sizing:border-box;"/>
+    <button id="admin-gate-btn" style="width:100%;height:40px;border:none;border-radius:8px;background:#0b1d5e;color:#bc9762;font-size:14px;font-weight:500;cursor:pointer;">Send login link</button>
+    <div id="admin-gate-msg" style="font-size:12px;margin-top:14px;"></div>
+  </div>
+</div>
 <div class="app" id="app"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -882,6 +892,7 @@ function migrateData(){
 
 const SUPABASE_URL='https://jpeanlmbfylihxsvuamm.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZWFubG1iZnlsaWh4c3Z1YW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4MzMyNjYsImV4cCI6MjA5MTQwOTI2Nn0.04wuHxGHuScKupZModEFC67snGlc1XKyy1-y0IUX3OM';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const SB_HEADERS={'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
 const STATE_ID='gmj_main';
 let _syncTimer=null;
@@ -933,13 +944,19 @@ async function pushToSupabase(){
 
 
 // ── CLIENT TABLE CRUD ─────────────────────────────────────────────────
+const INFO_FIELD_KEYS=DEFAULT_FIELDS.map(f=>f.key); // ['doctor','staff','timezone','website','numLocations','locations','notes']
+
 async function upsertClient(c){
-  // Separate fixed columns from info blob
-  const {id,name,doctor,email,status,...rest}=c;
-  // Remove notes from info — they live in client_notes table
-  const info={...rest};
-  delete info.notesLog;
-  const body={name,doctor:doctor||null,email:email||null,
+  // c.doctor/c.email don't exist at the top level — the field-editor data (doctor, staff,
+  // timezone, etc) lives nested at c.info.{key}. Everything else (ci, practices, billingContacts,
+  // payments, accentColor) lives at the top level of c, as a sibling of c.info.
+  // FLATTEN both into ONE level for storage — this is the shape todo.html and the DB health
+  // "View table" viewer expect. Previously this nested c.info a second time inside itself
+  // (info.info.staff instead of info.staff), which silently hid staff/doctor/timezone/notes
+  // from every consumer except dashboard.html's own accidental round-trip.
+  const {id,name,doctor,email,status,info:nestedInfo,notesLog,...rest}=c;
+  const info={...rest,...(nestedInfo||{})};
+  const body={name,doctor:(nestedInfo&&nestedInfo.doctor)||null,email:email||null,
     status:status||'active',info,updated_at:new Date().toISOString()};
   try{
     if(id&&id<=9999){
@@ -1008,14 +1025,27 @@ async function loadClientsFromDB(){
       // Merge DB rows into S.clients preserving local UI state
       S.clients=rows.map(row=>{
         const existing=S.clients.find(c=>c.id===row.id)||{};
+        const flat=row.info||{};
+        // Legacy rows (written before the double-nesting fix) have the real field data at
+        // flat.info.{key}. New rows have it flat at flat.{key} directly. Handle both so old
+        // synced data doesn't disappear the moment this fix ships.
+        const legacyNested=(flat.info&&typeof flat.info==='object')?flat.info:{};
+        const nestedInfo={...legacyNested};
+        const topLevel={};
+        Object.keys(flat).forEach(k=>{
+          if(k==='info') return; // handled via legacyNested above
+          if(INFO_FIELD_KEYS.includes(k)) nestedInfo[k]=flat[k];
+          else topLevel[k]=flat[k];
+        });
         return{
           id:row.id,
           name:row.name,
           doctor:row.doctor||'',
           email:row.email||'',
           status:row.status||'active',
-          ...row.info, // spread info blob (practices, staff, fields, etc)
-          ...existing, // keep any local-only state
+          ...topLevel, // ci, practices, billingContacts, payments, accentColor, etc
+          info:nestedInfo, // doctor, staff, timezone, locations, numLocations, notes
+          ...existing, // keep any local-only state (still wins, same as before)
           id:row.id, // ensure id stays correct
           name:row.name,
         };
@@ -4121,10 +4151,53 @@ function openAccountingOverview(){
   setTimeout(()=>renderOverview(currentYear,'all','all'),0);
 }
 
-render();
-loadFromSupabase();
-loadSubmissions();
+// ── ADMIN AUTH GATE ──────────────────────────────────────────────────
+// Nothing below boots the actual dashboard until a session is confirmed
+// AND that session's user_id has role='admin' in user_roles. A logged-in
+// session alone is not enough — a client account is a valid session too.
+function showGateMsg(text,ok){
+  document.getElementById('admin-gate-msg').innerHTML=
+    `<div style="padding:10px 12px;border-radius:8px;background:${ok?'#EAF3DE':'#FCEBEB'};color:${ok?'#27500A':'#A32D2D'};">${text}</div>`;
+}
+
+async function sendAdminMagicLink(){
+  const email=(document.getElementById('admin-gate-email').value||'').trim();
+  const btn=document.getElementById('admin-gate-btn');
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showGateMsg('Enter a valid email address.',false);return;}
+  btn.disabled=true;btn.textContent='Sending...';
+  try{
+    await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false,emailRedirectTo:window.location.origin+window.location.pathname}});
+    showGateMsg('If that email has admin access, a login link is on its way.',true);
+  }catch(e){showGateMsg('Something went wrong. Try again.',false);}
+  btn.disabled=false;btn.textContent='Send login link';
+}
+
+async function bootDashboardIfAdmin(session){
+  if(!session){ document.getElementById('admin-gate').style.display='flex'; return; }
+  const {data:roleRow}=await sb.from('user_roles').select('role').eq('user_id',session.user.id).single();
+  if(!roleRow||roleRow.role!=='admin'){
+    showGateMsg('This account does not have admin access.',false);
+    await sb.auth.signOut();
+    return;
+  }
+  // Authenticated AND confirmed admin — upgrade every existing fetch() call to carry
+  // this session's token instead of the bare anon key, so RLS actually recognizes them.
+  SB_HEADERS.Authorization='Bearer '+session.access_token;
+  document.getElementById('admin-gate').style.display='none';
+  render();
+  loadFromSupabase();
+  loadSubmissions();
+}
+
+document.getElementById('admin-gate-btn').onclick=sendAdminMagicLink;
+document.getElementById('admin-gate-email').addEventListener('keydown',e=>{if(e.key==='Enter')sendAdminMagicLink();});
+
+sb.auth.getSession().then(({data:{session}})=>bootDashboardIfAdmin(session));
+sb.auth.onAuthStateChange((event,session)=>{
+  if(event==='SIGNED_IN') bootDashboardIfAdmin(session);
+});
 document.addEventListener('DOMContentLoaded',updateNotifBadge);
+
 </script>
 </body>
 </html>
