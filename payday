@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Commission Payday</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: ledger-book — outstanding summary up top, month calendar left, practice ledger right; stacks on phone */
+:root{
+  --bg:#f3f5f1; --surface:#ffffff; --ink:#1d2621; --muted:#5f6b63; --line:#d9dfd8;
+  --accent:#1f6b4f; --accent-soft:#e1efe7; --due:#a8640a; --due-soft:#fbefd9; --late:#b3261e; --late-soft:#fbe3e1; --paid:#5f6b63;
+  --f-display:"Fraunces",Georgia,serif; --f-body:"Figtree",system-ui,sans-serif; --f-num:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111613; --surface:#18201b; --ink:#e6ece7; --muted:#97a39b; --line:#2b352f;
+  --accent:#5fc497; --accent-soft:#1d3329; --due:#e6a645; --due-soft:#3a2c14; --late:#f08077; --late-soft:#3d1c1a; --paid:#7d8a82; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --surface:#18201b; --ink:#e6ece7; --muted:#97a39b; --line:#2b352f;
+  --accent:#5fc497; --accent-soft:#1d3329; --due:#e6a645; --due-soft:#3a2c14; --late:#f08077; --late-soft:#3d1c1a; --paid:#7d8a82; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:24px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4vw,40px);margin:0;letter-spacing:-.01em}
+h2{font-family:var(--f-display);font-weight:500;font-size:22px;margin:0;text-wrap:balance}
+.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:11.5px;color:var(--muted);font-weight:600}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+.status{font-size:13px;color:var(--muted)}
+.totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.tot{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:2px}
+.tot .v{font-family:var(--f-num);font-size:26px;font-weight:600}
+.tot.late .v{color:var(--late)} .tot.due .v{color:var(--due)}
+.tot small{color:var(--muted);font-size:12.5px}
+.main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0}
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.btn{font:600 13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)} .btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:center;padding-bottom:4px}
+.day{min-height:84px;border:1px solid var(--line);border-radius:6px;padding:5px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.day.out{opacity:.4} .day.today{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.day .d{font-size:12px;color:var(--muted);font-family:var(--f-num)}
+.chip{font:600 11px var(--f-num);border-radius:4px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border:0;text-align:left;width:100%}
+.chip.due{background:var(--due-soft);color:var(--due)} .chip.late{background:var(--late-soft);color:var(--late)}
+.chip.paid{background:transparent;color:var(--paid);text-decoration:line-through;border:1px dashed var(--line)}
+.chip.est{background:var(--accent-soft);color:var(--accent)}
+@media (max-width:520px){.day{min-height:58px;padding:3px}.chip{font-size:9.5px;padding:1px 2px}}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;font-weight:600;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.r,th.r{text-align:right}
+.pill{display:inline-block;white-space:nowrap;font:600 11px var(--f-body);padding:2px 8px;border-radius:99px}
+.pill.due{background:var(--due-soft);color:var(--due)} .pill.late{background:var(--late-soft);color:var(--late)} .pill.paid{background:var(--accent-soft);color:var(--accent)} .pill.est{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+form{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+label{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+input,select{font:400 14px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 9px;width:100%}
+.terms{font-size:13px;color:var(--muted)}
+.note{font-size:12.5px;color:var(--muted)}
+.flash{font-size:13px;color:var(--accent);min-height:1.2em}
+.chkrow{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink)}
+.chkrow label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);font-weight:500}
+.chkrow input{width:auto}
+details summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Professional fees + commission over threshold</div>
+      <h1>Commission Payday</h1>
+    </div>
+    <div style="display:grid;gap:6px;justify-items:end">
+      <div style="display:flex;gap:8px"><button class="btn sm" id="importBtn" type="button">Import</button><button class="btn sm" id="exportBtn" type="button">Export</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+      <div class="status" id="status">Loading…</div>
+    </div>
+  </header>
+
+  <section class="totals" aria-label="Summary">
+    <div class="tot late"><span class="eyebrow">Overdue</span><span class="v" id="tLate">$0.00</span><small id="tLateN">nothing past expected date</small></div>
+    <div class="tot due"><span class="eyebrow">Due, not yet late</span><span class="v" id="tDue">$0.00</span><small id="tDueN"></small></div>
+    <div class="tot"><span class="eyebrow">Next 30 days</span><span class="v" id="tNext">$0.00</span><small id="tNextN"></small></div>
+    <div class="tot"><span class="eyebrow">Collected this year</span><span class="v" id="tPaid">$0.00</span><small>marked paid, calendar 2026</small></div>
+  </section>
+
+  <div class="main">
+    <section class="panel" aria-label="Calendar">
+      <div class="calhead">
+        <button class="btn" id="prev" aria-label="Previous month">←</button>
+        <h2 id="calTitle">—</h2>
+        <button class="btn" id="next" aria-label="Next month">→</button>
+      </div>
+      <div class="grid" id="cal"></div>
+      <div class="legend">
+        <span style="--c:var(--late)">Overdue</span><span style="--c:var(--due)">Expected</span><span style="--c:var(--accent)">Fee only, revenue not entered</span><span style="--c:var(--line)">Paid</span>
+      </div>
+      <p class="note">Each chip sits on the date payment is expected: the practice's pay day in the month after the work month. Tap a chip to edit that month. Data lives in this browser; Export to back it up or move it to another device.</p>
+    </section>
+
+    <section class="panel" aria-label="Ledger">
+      <div class="calhead" style="flex-wrap:wrap">
+        <label style="flex:1;min-width:160px">Practice
+          <select id="practiceSel"></select>
+        </label>
+      </div>
+      <div class="terms" id="terms"></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Month</th><th class="r">Revenue</th><th class="r">Commission</th><th class="r">Owed</th><th>Status</th></tr></thead>
+          <tbody id="ledger"></tbody>
+        </table>
+      </div>
+
+      <form id="monthForm">
+        <h2 style="font-size:18px">Record a month</h2>
+        <div class="row">
+          <label for="fMonth">Work month<input type="month" id="fMonth" required></label>
+          <label for="fRev">Revenue ($)<input type="number" id="fRev" step="0.01" min="0" placeholder="leave blank if unknown"></label>
+        </div>
+        <div class="chkrow">
+          <label for="fFeePaid"><input type="checkbox" id="fFeePaid"> Fee received</label>
+          <label for="fCommPaid"><input type="checkbox" id="fCommPaid"> Commission received</label>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" type="submit" id="saveMonth">Save month</button>
+          <button class="btn" type="button" id="delMonth" hidden>Delete month</button>
+        </div>
+        <div class="flash" id="flash" role="status"></div>
+      </form>
+
+      <details>
+        <summary>Practice terms &amp; add a practice</summary>
+        <form id="practiceForm" style="margin-top:10px">
+          <div class="row">
+            <label for="pName">Name<input id="pName" required></label>
+            <label for="pFee">Monthly fee ($)<input id="pFee" type="number" step="0.01" min="0" required></label>
+          </div>
+          <div class="row">
+            <label for="pRate">Commission (%)<input id="pRate" type="number" step="0.01" min="0" required></label>
+            <label for="pThr">On revenue over ($)<input id="pThr" type="number" step="0.01" min="0" required></label>
+            <label for="pDay">Paid on day<input id="pDay" type="number" min="1" max="28" required></label>
+            <label for="pStart">First month<input id="pStart" type="month" required></label>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn primary" type="submit">Save terms</button>
+            <button class="btn" type="button" id="newPractice">New practice</button>
+          </div>
+        </form>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("en-US",{style:"currency",currency:"USD"});
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ym = (y,m) => y+"-"+String(m+1).padStart(2,"0");
+const parseYM = s => {const [y,m]=s.split("-").map(Number);return {y,m:m-1};};
+const label = s => {const {y,m}=parseYM(s);return MONTHS[m].slice(0,3)+" "+y;};
+
+let practices={}, months={}, curPid=null, editingPid=null;
+const KEY="commission-payday-v1";
+function load(){ try{ const d=JSON.parse(localStorage.getItem(KEY)||"{}"); practices=d.practices||{}; months=d.months||{}; return true; }catch(_){ return false; } }
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify({practices,months})); return true; }catch(_){ $("flash").textContent="Your browser blocked saving. Use Export to keep a copy."; return false; } }
+let view={y:TODAY.getFullYear(), m:TODAY.getMonth()};
+
+function commission(p,rev){ return rev==null ? null : Math.round(Math.max(0,rev-p.threshold)*p.rate)/100; }
+// Build expected line items for each practice from its first month through next month
+function items(){
+  const out=[];
+  const endY=TODAY.getFullYear(), endM=TODAY.getMonth()+1;
+  for(const [pid,p] of Object.entries(practices)){
+    let {y,m}=parseYM(p.startMonth);
+    while(y<endY || (y===endY && m<=endM)){
+      const key=ym(y,m), rec=months[pid+"_"+key]||{};
+      const rev = typeof rec.revenue==="number" ? rec.revenue : null;
+      const comm = commission(p,rev);
+      const due = new Date(y, m+1, p.payDay);
+      const feeOwed = rec.feePaid ? 0 : p.fee;
+      const commOwed = rec.commPaid || comm==null ? 0 : comm;
+      const owed = feeOwed+commOwed;
+      let state;
+      if(owed>0) state = due<TODAY ? "late" : (comm==null ? "est" : "due");
+      else state = (comm==null && !rec.commPaid) ? "est" : "paid";
+      out.push({pid,p,key,rev,comm,due,owed,feeOwed,commOwed,state,rec,
+        total:p.fee+(comm||0)});
+      m++; if(m>11){m=0;y++;}
+    }
+  }
+  return out;
+}
+
+function render(){
+  const all=items();
+  // totals
+  let late=0,lateN=0,due=0,dueN=0,next=0,nextN=0,paid=0;
+  const in30=new Date(TODAY); in30.setDate(in30.getDate()+30);
+  for(const it of all){
+    if(it.owed>0 && it.due<TODAY){late+=it.owed;lateN++;}
+    else if(it.owed>0){due+=it.owed;dueN++;}
+    if(it.owed>0 && it.due>=TODAY && it.due<=in30){next+=it.owed;nextN++;}
+    if(it.due.getFullYear()===2026){ if(it.rec.feePaid) paid+=it.p.fee; if(it.rec.commPaid && it.comm) paid+=it.comm; }
+  }
+  $("tLate").textContent=fmt(late); $("tLateN").textContent=lateN?lateN+" month"+(lateN>1?"s":"")+" past expected date":"nothing past expected date";
+  $("tDue").textContent=fmt(due); $("tDueN").textContent=dueN?dueN+" upcoming":"none upcoming";
+  $("tNext").textContent=fmt(next); $("tNextN").textContent=nextN?"by "+in30.toLocaleDateString("en-US",{month:"short",day:"numeric"}):"nothing scheduled";
+  $("tPaid").textContent=fmt(paid);
+
+  // calendar
+  $("calTitle").textContent=MONTHS[view.m]+" "+view.y;
+  const cal=$("cal"); cal.textContent="";
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d=>{const e=document.createElement("div");e.className="dow";e.textContent=d;cal.appendChild(e);});
+  const first=new Date(view.y,view.m,1), start=new Date(first); start.setDate(1-first.getDay());
+  for(let i=0;i<42;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i);
+    if(i>=35 && d.getMonth()!==view.m) break;
+    const cell=document.createElement("div");
+    cell.className="day"+(d.getMonth()!==view.m?" out":"")+(d.getTime()===TODAY.getTime()?" today":"");
+    const n=document.createElement("span");n.className="d";n.textContent=d.getDate();cell.appendChild(n);
+    for(const it of all){
+      if(it.due.getTime()!==d.getTime()) continue;
+      const b=document.createElement("button"); b.type="button";
+      b.className="chip "+it.state;
+      const amt = it.owed>0 ? it.owed : it.total;
+      b.textContent=fmt(amt).replace(".00","");
+      b.title=it.p.name+" · "+label(it.key)+" work · "+(it.state==="paid"?"paid":it.comm==null?"fee "+fmt(it.feeOwed)+", commission pending revenue":"owed "+fmt(it.owed));
+      b.addEventListener("click",()=>{curPid=it.pid;fillForm(it.key);render();});
+      cell.appendChild(b);
+    }
+    cal.appendChild(cell);
+  }
+
+  // practice selector + ledger
+  const sel=$("practiceSel"); const ids=Object.keys(practices);
+  if(!curPid || !practices[curPid]) curPid=ids[0]||null;
+  sel.textContent="";
+  ids.forEach(id=>{const o=document.createElement("option");o.value=id;o.textContent=practices[id].name;if(id===curPid)o.selected=true;sel.appendChild(o);});
+  const tb=$("ledger"); tb.textContent="";
+  if(!curPid){ $("terms").textContent="No practices yet. Open “Practice terms” below to add one."; return; }
+  const p=practices[curPid];
+  $("terms").textContent=fmt(p.fee)+"/mo fee + "+p.rate+"% of revenue over "+fmt(p.threshold)+" · expected on day "+p.payDay+" of the following month";
+  all.filter(it=>it.pid===curPid).reverse().forEach(it=>{
+    const tr=document.createElement("tr");
+    const cells=[label(it.key), it.rev==null?"—":fmt(it.rev), it.comm==null?"—":fmt(it.comm), fmt(it.owed)];
+    cells.forEach((c,i)=>{const td=document.createElement("td");td.textContent=c;if(i)td.className="r num";tr.appendChild(td);});
+    const td=document.createElement("td"); const pill=document.createElement("span");
+    pill.className="pill "+it.state;
+    pill.textContent={late:"Overdue",due:"Expected "+it.due.toLocaleDateString("en-US",{month:"short",day:"numeric"}),paid:"Paid",est:it.owed>0?"Fee due, need revenue":"Need revenue"}[it.state];
+    td.appendChild(pill); tr.appendChild(td);
+    tr.style.cursor="pointer"; tr.addEventListener("click",()=>fillForm(it.key));
+    tb.appendChild(tr);
+  });
+}
+
+function fillForm(key){
+  const rec=months[curPid+"_"+key]||{};
+  $("fMonth").value=key; $("fRev").value= typeof rec.revenue==="number"?rec.revenue:"";
+  $("fFeePaid").checked=!!rec.feePaid; $("fCommPaid").checked=!!rec.commPaid;
+  $("delMonth").hidden=!months[curPid+"_"+key];
+  $("flash").textContent="Editing "+label(key)+" for "+(practices[curPid]?.name||"");
+}
+function fillPractice(pid){
+  editingPid=pid; const p=practices[pid]||{name:"",fee:"",rate:"",threshold:"",payDay:15,startMonth:ym(TODAY.getFullYear(),TODAY.getMonth())};
+  $("pName").value=p.name;$("pFee").value=p.fee;$("pRate").value=p.rate;$("pThr").value=p.threshold;$("pDay").value=p.payDay;$("pStart").value=p.startMonth;
+}
+
+$("prev").onclick=()=>{view.m--; if(view.m<0){view.m=11;view.y--;} render();};
+$("next").onclick=()=>{view.m++; if(view.m>11){view.m=0;view.y++;} render();};
+$("practiceSel").onchange=e=>{curPid=e.target.value; fillPractice(curPid); render();};
+$("newPractice").onclick=()=>fillPractice(null);
+
+$("monthForm").addEventListener("submit",async e=>{
+  e.preventDefault(); if(!curPid){ $("flash").textContent="Add a practice first."; return; }
+  const key=$("fMonth").value; if(!key) return;
+  const revRaw=$("fRev").value;
+  const body={practiceId:curPid, month:key, feePaid:$("fFeePaid").checked, commPaid:$("fCommPaid").checked};
+  if(revRaw!=="") body.revenue=Number(revRaw);
+  months[curPid+"_"+key]=body; if(persist()) $("flash").textContent="Saved "+label(key)+"."; $("delMonth").hidden=false; render();
+});
+$("delMonth").onclick=async()=>{
+  const key=$("fMonth").value; if(!key) return;
+  if($("delMonth").dataset.arm!=="1"){ $("delMonth").dataset.arm="1"; $("delMonth").textContent="Tap again to delete"; return; }
+  $("delMonth").dataset.arm=""; $("delMonth").textContent="Delete month";
+  delete months[curPid+"_"+key]; persist(); $("flash").textContent="Deleted "+label(key)+"."; $("delMonth").hidden=true; render();
+};
+$("practiceForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const pid=editingPid || ("p"+Date.now().toString(36));
+  const body={name:$("pName").value.trim(),fee:Number($("pFee").value),rate:Number($("pRate").value),threshold:Number($("pThr").value),payDay:Number($("pDay").value),startMonth:$("pStart").value};
+  practices[pid]=body; curPid=pid; editingPid=pid; persist(); $("flash").textContent="Saved terms for "+body.name+"."; render();
+});
+
+// export / import
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify({practices,months},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="payday-data-"+new Date().toISOString().slice(0,10)+".json"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ const d=JSON.parse(await f.text()); if(!d.practices||!d.months) throw 0;
+    practices=d.practices; months=d.months; curPid=null; editingPid=null; persist();
+    const ids=Object.keys(practices); if(ids.length) fillPractice(ids[0]);
+    $("status").textContent="Imported "+f.name; render();
+  }catch(_){ $("status").textContent="That file isn't a Commission Payday export."; }
+  e.target.value="";
+};
+const ok=load();
+$("status").textContent= ok ? "Saved in this browser only. Export regularly." : "This browser blocks saving. Use Export before closing.";
+if(Object.keys(practices).length) fillPractice(Object.keys(practices)[0]);
+render();
+})();
+</script>
+
+</body>
+</html>
